@@ -1,0 +1,35 @@
+{
+  "name": "loja-online-backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "migrate": "node src/migrate.js up",
+    "migrate:status": "node src/migrate.js status",
+    "migrate:down": "node src/migrate.js down",
+    "seed": "node scripts/seed.js",
+    "test": "jest --runInBand",
+    "test:migrations": "node scripts/test-migrations.js",
+    "test:load": "node scripts/load-products.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.4",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.2",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^7.1.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
+  }
+}

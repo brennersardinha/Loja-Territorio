@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!**/.env.example
+!.env.production.example
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Test and coverage outputs
+coverage/
+**/coverage/
+.nyc_output/
+**/test-results/
+**/playwright-report/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime and cache files
+.cache/
+.vite/
+tmp/
+temp/
+*.pid
+*.seed
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

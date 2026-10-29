@@ -1,0 +1,8 @@
+function securityHeaders(req,res,next){
+  res.setHeader('Content-Security-Policy',"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:");
+  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+  if(process.env.NODE_ENV==='production'||req.secure||req.headers['x-forwarded-proto']==='https')res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains; preload');
+  next();
+}
+function createLoginRateLimiter({windowMs=15*60*1000,max=10,now=Date.now}={}){const attempts=new Map();return(req,res,next)=>{if(req.method!=='POST'||!['/login','/register','/password/forgot','/password/reset','/users/password/forgot','/users/password/reset'].includes(req.path))return next();const key=`${req.tenant?.id||'none'}:${req.ip||req.socket.remoteAddress}:${String(req.body?.email||'').trim().toLowerCase()}`,time=now(),current=attempts.get(key);const bucket=!current||time>=current.resetAt?{count:1,resetAt:time+windowMs}:{count:current.count+1,resetAt:current.resetAt};attempts.set(key,bucket);if(bucket.count>max){res.setHeader('Retry-After',String(Math.ceil((bucket.resetAt-time)/1000)));return res.status(429).json({error:'Muitas tentativas de autenticacao. Tente novamente mais tarde.',code:'AUTH_RATE_LIMITED'});}return next();};}
+module.exports={securityHeaders,createLoginRateLimiter};

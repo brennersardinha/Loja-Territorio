@@ -1,0 +1,60 @@
+import { useEffect, useRef, useState } from 'react';
+import Button from './ui/Button';
+import Alert from './ui/Alert';
+import EmptyState from './ui/EmptyState';
+import { useBranding } from '../contexts/BrandingContext';
+import useStoreInfo from '../hooks/useStoreInfo';
+import StripePaymentForm from './StripePaymentForm';
+
+const steps = ['Endereço', 'Entrega', 'Pagamento', 'Revisão'];
+
+export default function CheckoutSection({ loading, token, cartItems, checkoutForm, addressForm, addresses, submitAddress, removeAddress, previewCheckout, finalizeCheckout, shippingQuotes, quoteShipping, checkoutPreview, checkoutResult, formatPrice, formatDateTime, onCheckoutChange, onAddressChange, cartSubtotal }) {
+  const [step, setStep] = useState(1);
+  const { branding } = useBranding();
+  const { storeInfo } = useStoreInfo();
+  const { pickup, payment } = storeInfo;
+  const providers = [payment.stripe_publishable_key && ['stripe', 'Cartão de crédito (Stripe)'], payment.sandbox && ['sandbox', 'Ambiente de teste']].filter(Boolean);
+  const isPickup = checkoutForm.shipping_method === 'pickup' && !checkoutForm.shipping_quote_id;
+  const stripeClientSecret = checkoutPreview?.payment?.provider === 'stripe' ? checkoutPreview.payment.client_secret : null;
+  const resumed = useRef(false);
+
+  // Mantem o processador selecionado entre os disponiveis na loja.
+  useEffect(() => {
+    if (providers.length && !providers.some(([value]) => value === checkoutForm.payment_provider)) {
+      onCheckoutChange({ target: { name: 'payment_provider', value: providers[0][0] } });
+    }
+    if (checkoutForm.payment_provider === 'stripe' && checkoutForm.payment_method !== 'card') onCheckoutChange({ target: { name: 'payment_method', value: 'card' } });
+  }, [providers.map(([value]) => value).join(), checkoutForm.payment_provider]);
+
+  // Retorno de redirecionamento da Stripe (ex.: 3DS): conclui o pedido da sessao autorizada.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('checkout_session_id');
+    if (!token || !sessionId || resumed.current) return;
+    resumed.current = true;
+    window.history.replaceState({}, '', window.location.pathname);
+    if (params.get('redirect_status') === 'succeeded') { setStep(4); finalizeCheckout(Number(sessionId)); }
+  }, [token]);
+  const next = () => setStep((current) => Math.min(4, current + 1));
+  const back = () => setStep((current) => Math.max(1, current - 1));
+  const validateAndReview = async () => { await previewCheckout(); setStep(4); };
+
+  if (!token) return <section className="panel checkout-access"><EmptyState title="Entre para finalizar sua compra" description="Sua sacola está salva. Faça login para escolher o endereço, calcular o frete e pagar com segurança." actionLabel="Ir para minha conta" onAction={() => { window.location.href = '/conta'; }} /></section>;
+  if (cartItems.length === 0 && !checkoutResult) return <section className="panel checkout-access"><EmptyState title={branding.texts.cart_empty} description="Adicione ao menos um produto antes de iniciar o checkout." actionLabel="Explorar produtos" onAction={() => { window.location.href = '/buscar'; }} /></section>;
+
+  return <section className="checkout-page">
+    <header className="checkout-heading"><div><span className="eyebrow">Compra segura</span><h1>Finalizar pedido</h1><p>Revise cada etapa antes de confirmar.</p></div></header>
+    <ol className="checkout-stepper" aria-label="Etapas do checkout">{steps.map((label, index) => { const number = index + 1; return <li key={label} className={number === step ? 'active' : number < step ? 'complete' : ''}><button type="button" onClick={() => number < step && setStep(number)} disabled={number > step} aria-current={number === step ? 'step' : undefined}><span>{number < step ? '✓' : number}</span>{label}</button></li>; })}</ol>
+    {checkoutResult && <Alert variant="success" title="Pedido confirmado">{branding.texts.checkout_success} Pedido <span className="technical-data">#{checkoutResult.id}</span>. Total: {formatPrice(checkoutResult.total)}.</Alert>}
+    <div className="checkout-layout checkout-flow">
+      <div className="panel checkout-stage">
+        {step === 1 && <section aria-labelledby="checkout-address-title"><div className="stage-heading"><span className="step-label">Etapa 1 de 4</span><h2 id="checkout-address-title">Onde devemos entregar?</h2></div>{pickup.enabled && <Alert variant="info" title="Vai retirar na loja?">Você poderá escolher a retirada na próxima etapa; nesse caso o endereço não é necessário.</Alert>}<label>Endereço salvo<select name="address_id" value={checkoutForm.address_id} onChange={onCheckoutChange}><option value="">Usar endereço digitado abaixo</option>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} — {address.city}/{address.state}</option>)}</select></label><label>Endereço alternativo<textarea name="shipping_address_text" rows="3" value={checkoutForm.shipping_address_text} onChange={onCheckoutChange} placeholder="Rua, número, bairro, cidade, estado e CEP" /></label><details className="address-manager"><summary>Adicionar ou gerenciar endereços</summary><form className="form-grid two-columns" onSubmit={submitAddress}><label>Rótulo<input name="label" value={addressForm.label} onChange={onAddressChange} required /></label><label>Destinatário<input name="recipient_name" value={addressForm.recipient_name} onChange={onAddressChange} required /></label><label>Rua<input name="street" value={addressForm.street} onChange={onAddressChange} required /></label><label>Número<input name="number" value={addressForm.number} onChange={onAddressChange} /></label><label>Bairro<input name="neighborhood" value={addressForm.neighborhood} onChange={onAddressChange} /></label><label>Cidade<input name="city" value={addressForm.city} onChange={onAddressChange} required /></label><label>Estado<input name="state" value={addressForm.state} onChange={onAddressChange} required /></label><label>CEP<input name="zip_code" value={addressForm.zip_code} onChange={onAddressChange} required /></label><Button type="submit" disabled={loading}>Salvar endereço</Button></form>{addresses.map((address) => <div className="saved-address" key={address.id}><span><strong>{address.label}</strong><small>{address.city}/{address.state}{address.is_default ? ' · Padrão' : ''}</small></span><Button variant="danger" size="sm" onClick={() => removeAddress(address.id)}>Remover</Button></div>)}</details></section>}
+        {step === 2 && <section aria-labelledby="checkout-shipping-title"><div className="stage-heading"><span className="step-label">Etapa 2 de 4</span><h2 id="checkout-shipping-title">Escolha a entrega</h2></div><label>Método de envio<select name="shipping_method" value={checkoutForm.shipping_method} onChange={onCheckoutChange}><option value="standard">Padrão</option><option value="express">Expresso</option>{pickup.enabled && <option value="pickup">Retirar na loja (grátis)</option>}</select></label>{isPickup && <Alert variant="info" title="Retirada na loja"><strong>{pickup.address}</strong><br />Horário: {pickup.hours}{pickup.instructions && <><br />{pickup.instructions}</>}</Alert>}{!isPickup && <Button variant="ghost" onClick={quoteShipping} loading={loading}>Calcular frete pelo CEP</Button>}{!isPickup && shippingQuotes.length > 0 && <fieldset className="shipping-options"><legend>Opções disponíveis</legend>{shippingQuotes.map((quote) => <label key={quote.id} className="choice-card"><input type="radio" name="shipping_quote_id" value={quote.id} checked={String(checkoutForm.shipping_quote_id) === String(quote.id)} onChange={onCheckoutChange} /><span><strong>{quote.service_name}</strong><small>{quote.delivery_days} dias úteis</small></span><b>{formatPrice(quote.cost)}</b></label>)}</fieldset>}</section>}
+        {step === 3 && <section aria-labelledby="checkout-payment-title"><div className="stage-heading"><span className="step-label">Etapa 3 de 4</span><h2 id="checkout-payment-title">Como deseja pagar?</h2></div>{providers.length === 0 ? <Alert variant="warning" title="Pagamento indisponível">A loja ainda não ativou um meio de pagamento. Tente novamente mais tarde.</Alert> : <label>Pagamento<select name="payment_provider" value={checkoutForm.payment_provider} onChange={onCheckoutChange}>{providers.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}{checkoutForm.payment_provider === 'sandbox' && <label>Forma de pagamento (teste)<select name="payment_method" value={checkoutForm.payment_method} onChange={onCheckoutChange}><option value="pix">Pix</option><option value="card">Cartão</option><option value="boleto">Boleto</option></select></label>}<label>Cupom de desconto<input name="coupon_code" value={checkoutForm.coupon_code} onChange={onCheckoutChange} placeholder="Digite o código" /></label><Alert variant="info" title="Pagamento protegido">{checkoutForm.payment_provider === 'stripe' ? 'Os dados do cartão são digitados na próxima etapa, em formulário seguro da Stripe. A cobrança só é efetivada quando o pedido for confirmado.' : 'A confirmação do pedido acontece somente após a revisão final.'}</Alert></section>}
+        {step === 4 && <section aria-labelledby="checkout-review-title"><div className="stage-heading"><span className="step-label">Etapa 4 de 4</span><h2 id="checkout-review-title">Revise e confirme</h2></div>{checkoutPreview ? <div className="checkout-review"><p><span>{checkoutPreview.checkout.address_snapshot?.type === 'pickup' ? 'Retirada' : 'Endereço'}</span><strong>{checkoutPreview.checkout.address_snapshot?.street || checkoutPreview.checkout.address_snapshot?.label || 'Endereço informado'}</strong></p><p><span>Entrega</span><strong>{checkoutPreview.checkout.address_snapshot?.type === 'pickup' ? 'Retirar na loja' : checkoutPreview.checkout.shipping_method}</strong></p><p><span>Pagamento</span><strong>{checkoutPreview.checkout.payment_method}</strong></p><p><span>Sessão</span><strong className="technical-data">#{checkoutPreview.checkout.id}</strong></p><small>Válida até {formatDateTime(checkoutPreview.checkout.expires_at)}</small></div> : <Alert variant="warning" title="Revise os dados">Use “Recalcular pedido” para validar preço, cupom, frete e pagamento antes de finalizar.</Alert>}<Button variant="ghost" onClick={previewCheckout} loading={loading}>Recalcular pedido</Button>{stripeClientSecret && !checkoutResult ? <StripePaymentForm publishableKey={payment.stripe_publishable_key} clientSecret={stripeClientSecret} checkoutSessionId={checkoutPreview.checkout.id} onAuthorized={() => finalizeCheckout()} disabled={loading} /> : <Button fullWidth size="lg" onClick={() => finalizeCheckout()} loading={loading} disabled={!checkoutPreview || Boolean(checkoutResult)}>Confirmar e finalizar pedido</Button>}</section>}
+        <div className="checkout-navigation">{step > 1 && <Button variant="ghost" onClick={back}>← Voltar</Button>}<span />{step < 3 && <Button onClick={next}>Continuar →</Button>}{step === 3 && <Button onClick={validateAndReview} loading={loading}>Revisar pedido →</Button>}</div>
+      </div>
+      <aside className="panel order-summary checkout-order-summary"><h2>Resumo do pedido</h2><div className="checkout-products">{cartItems.map((item) => <div key={item.id}><span>{item.quantidade}× {item.nome}</span><strong>{formatPrice(Number(item.preco_unitario || item.preco) * Number(item.quantidade))}</strong></div>)}</div><div className="summary-line"><span>Subtotal</span><strong>{formatPrice(cartSubtotal())}</strong></div><div className="summary-line"><span>Frete</span><span>{formatPrice(checkoutPreview?.checkout?.shipping_cost || 0)}</span></div><div className="summary-line"><span>Desconto</span><span>− {formatPrice(checkoutPreview?.checkout?.discount_amount || 0)}</span></div><div className="summary-line summary-total"><span>Total</span><strong>{formatPrice(checkoutPreview?.checkout?.total || cartSubtotal())}</strong></div><small>Seus dados permanecem preenchidos ao voltar de etapa.</small></aside>
+    </div>
+  </section>;
+}

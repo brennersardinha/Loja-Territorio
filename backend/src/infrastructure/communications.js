@@ -1,0 +1,4 @@
+async function postJson(url, body, headers = {}) { const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw Object.assign(new Error('Falha no provedor de comunicacao.'), { status: 502, providerStatus: response.status }); return data; }
+class ResendEmail { constructor({ key = process.env.RESEND_API_KEY, from = process.env.RESEND_FROM } = {}) { this.key = key; this.from = from; } async send({ to, subject, html, text }) { if (!this.key || !this.from) throw Object.assign(new Error('Resend indisponivel.'), { status: 503 }); return postJson('https://api.resend.com/emails', { from: this.from, to: [to], subject, html, text }, { Authorization: `Bearer ${this.key}` }); } }
+
+module.exports = { ResendEmail };

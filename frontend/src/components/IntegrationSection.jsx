@@ -1,0 +1,16 @@
+import { useEffect, useState } from 'react';
+import Badge from './ui/Badge';
+import Button from './ui/Button';
+import EmptyState from './ui/EmptyState';
+
+export default function IntegrationSection({ token, showToast }) {
+  const [data, setData] = useState({ integrations: [], available: { payment: [], shipping: [] } });
+  const [form, setForm] = useState({ kind: 'payment', provider: '', envName: '', active: true });
+  const [busy, setBusy] = useState(false);
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  async function load() { const response=await fetch('/api/admin/integrations',{headers});const result=await response.json();if(!response.ok)throw Error(result.error);setData(result);setForm((current)=>({...current,provider:current.provider||result.available?.payment?.[0]||''})); }
+  useEffect(()=>{load().catch((error)=>showToast(error.message,'error'));},[token]);
+  function changeKind(kind){setForm({kind,provider:data.available?.[kind]?.[0]||'',envName:'',active:true});}
+  async function save(event){event.preventDefault();setBusy(true);try{const secretKey=form.kind==='payment'?'secret_key_env':'token_env';const response=await fetch(`/api/admin/integrations/${form.kind}/${form.provider}`,{method:'PUT',headers,body:JSON.stringify({active:form.active,settings:{[secretKey]:form.envName}})});const result=await response.json();if(!response.ok)throw Error(result.error);setForm((current)=>({...current,envName:''}));await load();showToast('Integração atualizada. O segredo não será exibido novamente.','success');}catch(error){showToast(error.message,'error');}finally{setBusy(false);}}
+  return <section className="branding-page"><div><span className="eyebrow">Configuração segura</span><h2>Integrações</h2><p className="muted-text">Credenciais são referências a variáveis do ambiente e nunca são retornadas pela API.</p></div><div className="branding-layout"><form className="panel form-grid" onSubmit={save}><label>Tipo<select value={form.kind} onChange={(e)=>changeKind(e.target.value)}><option value="payment">Pagamento</option><option value="shipping">Frete</option></select></label><label>Provedor<select required value={form.provider} onChange={(e)=>setForm({...form,provider:e.target.value})}>{(data.available?.[form.kind]||[]).map((provider)=><option key={provider}>{provider}</option>)}</select></label><label>Variável de ambiente do segredo<input required value={form.envName} onChange={(e)=>setForm({...form,envName:e.target.value})} placeholder="PROVIDER_SECRET_KEY" autoComplete="off" /></label><label className="checkbox-field"><input type="checkbox" checked={form.active} onChange={(e)=>setForm({...form,active:e.target.checked})}/> Integração ativa</label><Button type="submit" loading={busy}>Salvar e testar configuração</Button></form><section className="panel"><h3>Status</h3>{data.integrations.length?data.integrations.map((item)=><article className="cms-category" key={item.provider}><div><strong>{item.provider}</strong><small>{item.kind} · último teste: {item.last_tested_at?new Date(item.last_tested_at).toLocaleString('pt-BR'):'não realizado'}</small></div><Badge variant={item.active?'success':'neutral'}>{item.status}</Badge></article>):<EmptyState title="Nenhuma integração" description="Configure o primeiro provedor desta loja."/>}</section></div></section>;
+}
