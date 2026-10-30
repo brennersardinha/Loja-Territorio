@@ -209,7 +209,7 @@ router.get('/reviews', requirePermission(PERMISSIONS.REVIEWS_MODERATE), async (r
   const validStatuses = new Set(['pending', 'approved', 'rejected']);
 
   if (requestedStatus && !validStatuses.has(requestedStatus)) {
-    return res.status(400).json({ error: 'Status de moderacao invalido.' });
+    return res.status(400).json({ error: 'Status de moderação inválido.' });
   }
 
   const whereClause = requestedStatus ? 'WHERE r.tenant_id=$1 AND r.moderation_status = $2' : 'WHERE r.tenant_id=$1';
@@ -234,8 +234,8 @@ router.get('/reviews', requirePermission(PERMISSIONS.REVIEWS_MODERATE), async (r
     const total = countResult.rows[0].total;
     return res.json({ items: result.rows, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } });
   } catch (error) {
-    console.error('Erro ao listar avaliacoes para moderacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao listar avaliacoes.' });
+    console.error('Erro ao listar avaliações para moderação:', error);
+    return res.status(500).json({ error: 'Erro interno ao listar avaliações.' });
   }
 });
 
@@ -243,7 +243,7 @@ router.patch('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), as
   const reviewId = parsePositiveInteger(req.params.id);
   const moderationStatus = normalizeText(req.body.status).toLowerCase();
 
-  if (!reviewId) return res.status(400).json({ error: 'Avaliacao invalida.' });
+  if (!reviewId) return res.status(400).json({ error: 'Avaliação inválida.' });
   if (!['approved', 'rejected'].includes(moderationStatus)) {
     return res.status(400).json({ error: 'Status deve ser approved ou rejected.' });
   }
@@ -256,25 +256,25 @@ router.patch('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), as
        RETURNING id, produto_id, usuario_id, nota, comentario, moderation_status, created_at, updated_at`,
       [moderationStatus, reviewId,req.tenant.id],
     );
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Avaliacao nao encontrada.' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Avaliação não encontrada.' });
     return res.json({ review: result.rows[0] });
   } catch (error) {
-    console.error('Erro ao moderar avaliacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao moderar avaliacao.' });
+    console.error('Erro ao moderar avaliação:', error);
+    return res.status(500).json({ error: 'Erro interno ao moderar avaliação.' });
   }
 });
 
 router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), async (req, res) => {
   const reviewId = parsePositiveInteger(req.params.id);
-  if (!reviewId) return res.status(400).json({ error: 'Avaliacao invalida.' });
+  if (!reviewId) return res.status(400).json({ error: 'Avaliação inválida.' });
 
   try {
     const result = await db.query('DELETE FROM product_reviews WHERE id = $1 AND tenant_id=$2 RETURNING id', [reviewId,req.tenant.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Avaliacao nao encontrada.' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Avaliação não encontrada.' });
     return res.status(204).send();
   } catch (error) {
-    console.error('Erro ao excluir avaliacao na moderacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao excluir avaliacao.' });
+    console.error('Erro ao excluir avaliação na moderação:', error);
+    return res.status(500).json({ error: 'Erro interno ao excluir avaliação.' });
   }
 });
 
@@ -288,8 +288,8 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
 
     return res.json({ settings });
   } catch (error) {
-    console.error('Erro ao buscar configuracoes da loja:', error);
-    return res.status(500).json({ error: 'Erro interno ao buscar configuracoes da loja.' });
+    console.error('Erro ao buscar configurações da loja:', error);
+    return res.status(500).json({ error: 'Erro interno ao buscar configurações da loja.' });
   }
   });
 
@@ -305,7 +305,7 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
   });
 
   if (entries.length === 0) {
-    return res.status(400).json({ error: 'Nenhuma configuracao enviada.' });
+    return res.status(400).json({ error: 'Nenhuma configuração enviada.' });
   }
 
   const client = await db.connect();
@@ -326,8 +326,8 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
     return res.json({ settings: Object.fromEntries(entries.map((entry) => [entry.key, entry.value])) });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Erro ao atualizar configuracoes da loja:', error);
-    return res.status(500).json({ error: 'Erro interno ao atualizar configuracoes da loja.' });
+    console.error('Erro ao atualizar configurações da loja:', error);
+    return res.status(500).json({ error: 'Erro interno ao atualizar configurações da loja.' });
   } finally {
     client.release();
   }
@@ -338,7 +338,7 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
   const dateTo = req.query.date_to ? new Date(req.query.date_to) : null;
 
   if ((dateFrom && Number.isNaN(dateFrom.getTime())) || (dateTo && Number.isNaN(dateTo.getTime()))) {
-    return res.status(400).json({ error: 'Datas invalidas.' });
+    return res.status(400).json({ error: 'Datas inválidas.' });
   }
 
   const filters = ['tenant_id = $1'];
@@ -418,11 +418,11 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
   const endsAt = typeof req.body.ends_at === 'string' && req.body.ends_at ? req.body.ends_at : null;
 
   if (!code) {
-    return res.status(400).json({ error: 'Codigo do cupom e necessario.' });
+    return res.status(400).json({ error: 'Código do cupom é necessário.' });
   }
 
   if (!['percent', 'fixed'].includes(discountType) || Number.isNaN(discountValue)) {
-    return res.status(400).json({ error: 'Tipo ou valor do cupom invalidos.' });
+    return res.status(400).json({ error: 'Tipo ou valor do cupom inválidos.' });
   }
 
   try {
@@ -436,7 +436,7 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
     return res.status(201).json({ coupon: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'Cupom ja cadastrado.' });
+      return res.status(409).json({ error: 'Cupom já cadastrado.' });
     }
 
     console.error('Erro ao criar cupom:', error);
@@ -448,7 +448,7 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
   const couponId = Number(req.params.id);
 
   if (!Number.isInteger(couponId) || couponId <= 0) {
-    return res.status(400).json({ error: 'Cupom invalido.' });
+    return res.status(400).json({ error: 'Cupom inválido.' });
   }
 
   const fields = [];
@@ -491,13 +491,13 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Cupom nao encontrado.' });
+      return res.status(404).json({ error: 'Cupom não encontrado.' });
     }
 
     return res.json({ coupon: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'Cupom ja cadastrado.' });
+      return res.status(409).json({ error: 'Cupom já cadastrado.' });
     }
 
     console.error('Erro ao atualizar cupom:', error);
@@ -509,14 +509,14 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), a
   const couponId = Number(req.params.id);
 
   if (!Number.isInteger(couponId) || couponId <= 0) {
-    return res.status(400).json({ error: 'Cupom invalido.' });
+    return res.status(400).json({ error: 'Cupom inválido.' });
   }
 
   try {
     const result = await db.query('DELETE FROM coupons WHERE id = $1 AND tenant_id=$2 RETURNING id', [couponId,req.tenant.id]);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Cupom nao encontrado.' });
+      return res.status(404).json({ error: 'Cupom não encontrado.' });
     }
 
     return res.json({ message: 'Cupom removido.' });
@@ -566,12 +566,15 @@ router.get('/orders', requirePermission(PERMISSIONS.ORDERS_READ), async (req, re
          o.updated_at,
          u.nome AS customer_name,
          u.email AS customer_email,
-         COALESCE(SUM(oi.quantidade), 0)::int AS items_count
+         COALESCE(SUM(oi.quantidade), 0)::int AS items_count,
+         ol.code AS label_code,
+         ol.print_count AS label_print_count
        FROM orders o
        JOIN users u ON u.id = o.usuario_id
        LEFT JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN order_labels ol ON ol.order_id = o.id AND ol.tenant_id = o.tenant_id
        ${whereSql}
-       GROUP BY o.id, u.id
+       GROUP BY o.id, u.id, ol.id
        ORDER BY ${ORDER_LIST_SORTS[sortBy]} ${sortDirection}, o.id DESC
        LIMIT ${limitPlaceholder}
        OFFSET ${offsetPlaceholder}`,
@@ -602,7 +605,7 @@ router.get('/orders/:id', requirePermission(PERMISSIONS.ORDERS_READ), async (req
   const orderId = Number(req.params.id);
 
   if (!Number.isInteger(orderId) || orderId <= 0) {
-    return res.status(400).json({ error: 'Pedido invalido.' });
+    return res.status(400).json({ error: 'Pedido inválido.' });
   }
 
   try {
@@ -635,7 +638,7 @@ router.get('/orders/:id', requirePermission(PERMISSIONS.ORDERS_READ), async (req
     );
 
     if (orderResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Pedido nao encontrado.' });
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
     const itemsResult = await db.query(
@@ -713,7 +716,7 @@ router.get('/customers/:id', requirePermission(PERMISSIONS.CUSTOMERS_READ), asyn
   const customerId = Number(req.params.id);
 
   if (!Number.isInteger(customerId) || customerId <= 0) {
-    return res.status(400).json({ error: 'Cliente invalido.' });
+    return res.status(400).json({ error: 'Cliente inválido.' });
   }
 
   try {
@@ -728,7 +731,7 @@ router.get('/customers/:id', requirePermission(PERMISSIONS.CUSTOMERS_READ), asyn
     );
 
     if (customerResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Cliente nao encontrado.' });
+      return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
 
     const addressesResult = await db.query(
@@ -765,7 +768,7 @@ router.put('/customers/:id', requirePermission(PERMISSIONS.CUSTOMERS_WRITE), asy
   const customerId = Number(req.params.id);
 
   if (!Number.isInteger(customerId) || customerId <= 0) {
-    return res.status(400).json({ error: 'Cliente invalido.' });
+    return res.status(400).json({ error: 'Cliente inválido.' });
   }
 
   const nome = typeof req.body.nome === 'string' ? req.body.nome.trim() : '';
@@ -777,7 +780,7 @@ router.put('/customers/:id', requirePermission(PERMISSIONS.CUSTOMERS_WRITE), asy
   }
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Email invalido.' });
+    return res.status(400).json({ error: 'Email inválido.' });
   }
 
   try {
@@ -790,7 +793,7 @@ router.put('/customers/:id', requirePermission(PERMISSIONS.CUSTOMERS_WRITE), asy
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Cliente nao encontrado.' });
+      return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
 
     return res.json({ customer: result.rows[0] });
@@ -811,7 +814,7 @@ router.put('/orders/:id/status', requirePermission(PERMISSIONS.ORDERS_UPDATE_STA
   const notes = typeof req.body.notes === 'string' ? req.body.notes.trim() : null;
 
   if (!Number.isInteger(orderId) || orderId <= 0) {
-    return res.status(400).json({ error: 'Pedido invalido.' });
+    return res.status(400).json({ error: 'Pedido inválido.' });
   }
 
   if (!Object.prototype.hasOwnProperty.call(ORDER_TRANSITIONS, newStatus)) {
@@ -831,7 +834,7 @@ router.put('/orders/:id/status', requirePermission(PERMISSIONS.ORDERS_UPDATE_STA
 
     if (orderResult.rowCount === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Pedido nao encontrado.' });
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
     const currentStatus = orderResult.rows[0].status;
@@ -882,7 +885,7 @@ router.put('/orders/:id/status', requirePermission(PERMISSIONS.ORDERS_UPDATE_STA
         );
       }
     } catch (nErr) {
-      console.error('Falha ao criar notificacao (não crítica):', nErr);
+      console.error('Falha ao criar notificação (não crítica):', nErr);
     }
 
     await client.query('COMMIT');
@@ -939,7 +942,7 @@ router.post('/shipping_tracking', requirePermission(PERMISSIONS.ORDERS_UPDATE_ST
   const checkpoints = Array.isArray(req.body.checkpoints) ? req.body.checkpoints : [];
 
   if (!Number.isInteger(orderId) || orderId <= 0) {
-    return res.status(400).json({ error: 'order_id invalido.' });
+    return res.status(400).json({ error: 'order_id inválido.' });
   }
 
   try {
@@ -965,7 +968,7 @@ router.put('/shipping_tracking/:id', requirePermission(PERMISSIONS.ORDERS_UPDATE
   const checkpoints = Array.isArray(req.body.checkpoints) ? req.body.checkpoints : null;
 
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'id invalido.' });
+    return res.status(400).json({ error: 'id inválido.' });
   }
 
   try {
@@ -991,7 +994,7 @@ router.put('/shipping_tracking/:id', requirePermission(PERMISSIONS.ORDERS_UPDATE
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Registro de tracking nao encontrado.' });
+      return res.status(404).json({ error: 'Registro de tracking não encontrado.' });
     }
 
     return res.json({ item: result.rows[0] });
@@ -1005,14 +1008,14 @@ router.delete('/shipping_tracking/:id', requirePermission(PERMISSIONS.ORDERS_UPD
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'id invalido.' });
+    return res.status(400).json({ error: 'id inválido.' });
   }
 
   try {
     const result = await db.query('DELETE FROM shipping_tracking WHERE id = $1 AND tenant_id=$2 RETURNING id', [id,req.tenant.id]);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Registro de tracking nao encontrado.' });
+      return res.status(404).json({ error: 'Registro de tracking não encontrado.' });
     }
 
     return res.json({ message: 'Registro removido.' });

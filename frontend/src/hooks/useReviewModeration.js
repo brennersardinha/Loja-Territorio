@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 async function parseResponse(response) {
   const data = await response.json();
-  if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+  if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
   return data;
 }
 
@@ -39,7 +39,7 @@ export default function useReviewModeration({ token, showToast } = {}) {
         body: JSON.stringify({ status }),
       });
       await parseResponse(response);
-      showToast?.(status === 'approved' ? 'Avaliacao aprovada.' : 'Avaliacao rejeitada.', 'success');
+      showToast?.(status === 'approved' ? 'Avaliação aprovada.' : 'Avaliação rejeitada.', 'success');
       await fetchReviews(pagination.page);
     } catch (error) {
       showToast?.(error.message, 'error');
@@ -56,7 +56,7 @@ export default function useReviewModeration({ token, showToast } = {}) {
         headers: { Authorization: `Bearer ${token}` },
       });
       await parseResponse(response);
-      showToast?.('Avaliacao excluida.', 'success');
+      showToast?.('Avaliação excluida.', 'success');
       await fetchReviews(pagination.page);
     } catch (error) {
       showToast?.(error.message, 'error');

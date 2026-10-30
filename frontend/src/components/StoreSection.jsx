@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductReviews from './ProductReviews';
+import ProductGallery from './ProductGallery';
+import RelatedProducts from './RelatedProducts';
+import ShippingEstimator from './ShippingEstimator';
 import { analyticsItem, trackEvent } from '../utils/analytics';
-import ProductCard from './ui/ProductCard';
+import { productUrl } from '../utils/productUrl';
+import { validatePriceFilters } from '../utils/formValidation';
+import useStoreInfo from '../hooks/useStoreInfo';
+import ProductCard, { priceUnit } from './ui/ProductCard';
 import Button from './ui/Button';
+import Icon from './ui/Icon';
 import { formatAttributeValue } from '../utils/formatAttributeValue';
+
+const FILTER_KEYS = ['busca', 'categoria_id', 'min_preco', 'max_preco'];
+
+function filtersFromParams(searchParams) {
+  return Object.fromEntries(FILTER_KEYS.map((key) => [key, searchParams.get(key) || '']));
+}
 
 export default function StoreSection({
   products,
@@ -14,39 +27,35 @@ export default function StoreSection({
   productPagination,
   onFiltersChange,
   setProductFilters,
-  submitProductFilters,
-  clearProductFilters,
   addToCart,
   toggleWishlist,
   fetchProductDetails,
   fetchProducts,
   formatPrice,
-  renderAttributes,
   changeProductPage,
   token,
   user,
   productId,
   loading,
+  setStatus,
 }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sort, setSort] = useState(searchParams.get('ordenacao') || 'relevancia');
-  const [selectedPhoto, setSelectedPhoto] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const lastViewedProductId = useRef(null);
+  const { storeInfo } = useStoreInfo();
+  const { pickup, policies } = storeInfo;
   const getPhotos = (product) => (Array.isArray(product?.fotos_produto) ? product.fotos_produto.filter(Boolean) : []);
-
-  const getImageStyle = (product) => ({
-    objectFit: product?.foto_exibicao_fit || 'cover',
-    objectPosition: product?.foto_exibicao_position || 'center',
-  });
 
   useEffect(() => {
     if (productId && selectedProduct?.id !== productId) {
       fetchProductDetails(productId);
     }
   }, [fetchProductDetails, productId, selectedProduct?.id]);
+
+  useEffect(() => { setQuantity(1); }, [productId]);
 
   useEffect(() => {
     if (!productId || selectedProduct?.id !== productId || lastViewedProductId.current === productId) return;
@@ -58,28 +67,33 @@ export default function StoreSection({
     });
   }, [productId, selectedProduct]);
 
-  const productUrl = (product) => `/produto/${product.id}/${product.slug || String(product.nome || 'produto')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'produto'}`;
-
+  // A URL é a fonte dos filtros: a busca do cabeçalho e os filtros da página só alteram a URL.
+  const paramsKey = searchParams.toString();
   useEffect(() => {
     if (productId) return;
-    const filters = { busca: searchParams.get('busca') || '', categoria_id: searchParams.get('categoria_id') || '', min_preco: searchParams.get('min_preco') || '', max_preco: searchParams.get('max_preco') || '' };
+    const filters = filtersFromParams(searchParams);
     setProductFilters(filters);
     setSort(searchParams.get('ordenacao') || 'relevancia');
     fetchProducts(filters, 1);
-  }, []);
+  }, [productId, paramsKey]);
 
   const applyFilters = (event) => {
     event?.preventDefault();
+    const validationError = validatePriceFilters(productFilters);
+    if (validationError) { setStatus?.(validationError); return; }
     const params = new URLSearchParams();
     Object.entries(productFilters).forEach(([key, value]) => { if (value !== '') params.set(key, value); });
     if (sort !== 'relevancia') params.set('ordenacao', sort);
-    setSearchParams(params);
-    submitProductFilters(event);
+    if (params.toString() === paramsKey) fetchProducts(productFilters, 1);
+    else setSearchParams(params);
     setFiltersOpen(false);
   };
-  const clearFilters = () => { setSort('relevancia'); setSearchParams({}); clearProductFilters(); setFiltersOpen(false); };
+  const clearFilters = () => {
+    setSort('relevancia');
+    setFiltersOpen(false);
+    if (paramsKey) setSearchParams({});
+    else fetchProducts(filtersFromParams(new URLSearchParams()), 1);
+  };
   const sortedProducts = useMemo(() => [...products].sort((a, b) => {
     if (sort === 'menor_preco') return Number(a.preco) - Number(b.preco);
     if (sort === 'maior_preco') return Number(b.preco) - Number(a.preco);
@@ -91,33 +105,37 @@ export default function StoreSection({
   if (productId) {
     if (!selectedProduct || selectedProduct.id !== productId) return <section className="panel product-loading" aria-live="polite"><h2>Carregando produto...</h2><p className="muted-text">Estamos preparando os detalhes para você.</p></section>;
     const photos = getPhotos(selectedProduct);
-    const available = Number(selectedProduct.estoque) > 0;
+    const stock = Number(selectedProduct.estoque);
+    const available = stock > 0;
     const rating = Number(selectedProduct.avaliacao_media || 0);
     const reviewCount = Number(selectedProduct.total_avaliacoes || 0);
     const oldPrice = Number(selectedProduct.preco_anterior || 0);
+    const unit = priceUnit(selectedProduct);
     const attributes = Object.entries(selectedProduct.atributos_dinamicos || {});
     const buyNow = async () => { if (await addToCart(selectedProduct, quantity)) navigate('/checkout'); };
     return <section className="product-detail-page">
-      <nav className="breadcrumb" aria-label="Navegação estrutural"><button type="button" onClick={() => navigate('/buscar')}>Produtos</button><span aria-hidden="true">/</span><span aria-current="page">{selectedProduct.nome}</span></nav>
+      <nav className="breadcrumb" aria-label="Navegação estrutural"><button type="button" onClick={() => navigate('/buscar')}>Produtos</button>{selectedProduct.categoria_id && <><span aria-hidden="true">/</span><button type="button" onClick={() => navigate(`/buscar?categoria_id=${selectedProduct.categoria_id}`)}>{selectedProduct.categoria_nome}</button></>}<span aria-hidden="true">/</span><span aria-current="page">{selectedProduct.nome}</span></nav>
       <div className="product-detail-main">
-        <div className="product-detail-gallery">
-          <div className="product-main-media">{photos.length ? <img src={photos[selectedPhoto] || photos[0]} alt={selectedProduct.nome} style={getImageStyle(selectedProduct)} decoding="async" /> : <div className="product-image-fallback" role="img" aria-label={`Imagem indisponível para ${selectedProduct.nome}`}>Imagem indisponível</div>}</div>
-          {photos.length > 1 && <div className="product-thumbnails" aria-label="Imagens do produto">{photos.map((photo, index) => <button key={`${photo}-${index}`} type="button" className={selectedPhoto === index ? 'active' : ''} onClick={() => setSelectedPhoto(index)} aria-label={`Ver imagem ${index + 1} de ${selectedProduct.nome}`} aria-pressed={selectedPhoto === index}><img src={photo} alt="" loading="lazy" decoding="async" style={getImageStyle(selectedProduct)} /></button>)}</div>}
-        </div>
+        <ProductGallery product={selectedProduct} photos={photos} />
         <div className="product-detail-info">
-          <div className="product-meta">{selectedProduct.sku && <span className="technical-data">{selectedProduct.sku}</span>}<span className={`availability ${available ? 'available' : 'unavailable'}`}>{available ? '✓ Em estoque' : '× Indisponível'}</span></div>
-          <span className="product-category">{selectedProduct.categoria_nome || 'Sem categoria'}</span><h1>{selectedProduct.nome}</h1>
-          <div className="product-rating" aria-label={reviewCount ? `${rating.toFixed(1)} de 5, ${reviewCount} avaliações` : 'Produto ainda sem avaliações'}><span aria-hidden="true">★ {rating ? rating.toFixed(1) : '—'}</span><small>{reviewCount ? `${reviewCount} avaliações` : 'Sem avaliações'}</small></div>
-          <div className="detail-price"><strong>{formatPrice(selectedProduct.preco)}</strong>{oldPrice > Number(selectedProduct.preco) && <del>{formatPrice(oldPrice)}</del>}</div>
+          <h1>{selectedProduct.nome}</h1>
+          {reviewCount > 0 && <a className="product-rating" href="#reviews-heading" aria-label={`${rating.toFixed(1)} de 5, ${reviewCount} avaliações`}><span aria-hidden="true">★ {rating.toFixed(1)}</span><small aria-hidden="true">{reviewCount} avaliações</small></a>}
+          <div className="detail-price"><strong>{formatPrice(selectedProduct.preco)}</strong>{unit && <span className="price-unit">/ {unit}</span>}{oldPrice > Number(selectedProduct.preco) && <del>{formatPrice(oldPrice)}</del>}</div>
+          <p className={`availability ${available ? 'available' : 'unavailable'}`}>{available ? (stock <= 5 ? `Últimas ${stock} unidades` : 'Em estoque') : 'Indisponível no momento'}</p>
+          {pickup.enabled && available && <div className="pickup-badge"><Icon name="store" /><span><strong>Retire grátis na loja</strong><small>{pickup.address}{pickup.hours ? ` · ${pickup.hours}` : ''}</small></span></div>}
+          <label className="quantity-field">Quantidade<div className="quantity-stepper"><Button variant="ghost" size="sm" onClick={() => setQuantity((value) => Math.max(1, value - 1))} disabled={quantity <= 1 || !available} aria-label="Diminuir quantidade">−</Button><output aria-live="polite">{quantity}</output><Button variant="ghost" size="sm" onClick={() => setQuantity((value) => Math.min(stock, value + 1))} disabled={quantity >= stock || !available} aria-label="Aumentar quantidade">+</Button></div></label>
+          <div className="product-detail-actions"><Button fullWidth size="lg" onClick={() => addToCart(selectedProduct, quantity)} disabled={!available}>{available ? 'Adicionar ao carrinho' : 'Produto indisponível'}</Button><Button fullWidth variant="dark" size="lg" onClick={buyNow} disabled={!available}>Comprar agora</Button><Button fullWidth variant="ghost" onClick={() => toggleWishlist(selectedProduct)}>♡ Adicionar aos favoritos</Button></div>
+          {available && <ShippingEstimator productId={selectedProduct.id} quantity={quantity} formatPrice={formatPrice} />}
           <p className="product-detail-description">{selectedProduct.descricao || 'Produto sem descrição cadastrada.'}</p>
           {attributes.length > 0 && <fieldset className="product-options"><legend>Características</legend>{attributes.map(([key, value]) => <div key={key}><span>{key}</span><strong>{formatAttributeValue(value)}</strong></div>)}</fieldset>}
-          <label className="quantity-field">Quantidade<div className="quantity-stepper"><Button variant="ghost" size="sm" onClick={() => setQuantity((value) => Math.max(1, value - 1))} disabled={quantity <= 1 || !available} aria-label="Diminuir quantidade">−</Button><output aria-live="polite">{quantity}</output><Button variant="ghost" size="sm" onClick={() => setQuantity((value) => Math.min(Number(selectedProduct.estoque), value + 1))} disabled={quantity >= Number(selectedProduct.estoque) || !available} aria-label="Aumentar quantidade">+</Button></div></label>
-          <p className="stock-message" role="status">{available ? `${selectedProduct.estoque} unidade(s) disponível(is)` : 'Este produto não pode ser comprado no momento.'}</p>
-          <div className="product-detail-actions"><Button fullWidth size="lg" onClick={() => addToCart(selectedProduct, quantity)} disabled={!available}>{available ? 'Adicionar ao carrinho' : 'Produto indisponível'}</Button><Button fullWidth variant="dark" size="lg" onClick={buyNow} disabled={!available}>Comprar agora</Button><Button fullWidth variant="ghost" onClick={() => toggleWishlist(selectedProduct)}>♡ Adicionar aos favoritos</Button></div>
-          <div className="delivery-note"><strong>Entrega e devolução</strong><p>O prazo e o valor do frete são calculados no checkout. Consulte também nossa política de trocas.</p></div>
+          {policies.exchanges && <p className="delivery-note"><NavLink to="/politicas/trocas">Política de trocas e devoluções</NavLink></p>}
+          {selectedProduct.sku && <small className="product-code">Código do produto: {selectedProduct.sku}</small>}
         </div>
       </div>
-      <div className="panel product-reviews-section"><ProductReviews productId={selectedProduct.id} token={token} user={user} /></div>
+      <ProductReviews className="panel product-reviews-section" productId={selectedProduct.id} token={token} user={user} />
+      <RelatedProducts categoryId={selectedProduct.categoria_id} excludeIds={[selectedProduct.id]} formatPrice={formatPrice} addToCart={addToCart} toggleWishlist={toggleWishlist} pickupAvailable={pickup.enabled} />
+      {/* No celular, preço e compra ficam sempre ao alcance do polegar. */}
+      <div className="mobile-buy-bar" aria-label="Compra rápida"><div><strong>{formatPrice(Number(selectedProduct.preco) * quantity)}</strong><small>{!available ? 'Indisponível' : unit ? (quantity > 1 ? `${quantity} × ${unit}` : `por ${unit}`) : quantity > 1 ? `${quantity} unidades` : ''}</small></div><Button onClick={() => addToCart(selectedProduct, quantity)} disabled={!available}>{available ? 'Adicionar ao carrinho' : 'Indisponível'}</Button></div>
     </section>;
   }
 
@@ -164,7 +182,7 @@ export default function StoreSection({
 
       <div className="store-layout">
         <div className="product-grid">
-          {sortedProducts.map((product) => <ProductCard key={product.id} product={product} formatPrice={formatPrice} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onDetails={(item) => navigate(productUrl(item))} />)}
+          {sortedProducts.map((product) => <ProductCard key={product.id} product={product} formatPrice={formatPrice} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onDetails={(item) => navigate(productUrl(item))} pickupAvailable={pickup.enabled} />)}
           {!loading && products.length === 0 && <div className="empty-state"><strong>Nenhum produto encontrado</strong><span>Tente remover os filtros ou buscar por outro termo.</span><button className="ghost-button compact" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
         </div>
 

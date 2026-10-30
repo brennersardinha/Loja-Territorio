@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Button from './ui/Button';
 import { clearStoreInfoCache, EMPTY_STORE_INFO } from '../hooks/useStoreInfo';
 
-const empty = { pickup: EMPTY_STORE_INFO.pickup, contact: EMPTY_STORE_INFO.contact, policies: EMPTY_STORE_INFO.policies };
+const empty = { pickup: EMPTY_STORE_INFO.pickup, contact: EMPTY_STORE_INFO.contact, policies: EMPTY_STORE_INFO.policies, shipping: { free_shipping_min: 0 }, sender: { name: '', document: '', address: '', zip_code: '', phone: '' } };
 
 export default function StoreSettingsSection({ token, showToast }) {
   const [form, setForm] = useState(empty);
@@ -13,7 +13,7 @@ export default function StoreSettingsSection({ token, showToast }) {
     fetch('/api/admin/store-info', { headers }).then(async (response) => {
       const data = await response.json();
       if (!response.ok) throw Error(data.error);
-      setForm({ ...empty, ...data.store_info });
+      setForm({ ...empty, ...data.store_info, sender: { ...empty.sender, ...data.store_info?.sender } });
     }).catch((error) => showToast(error.message, 'error')).finally(() => setBusy(false));
   }, [token]);
 
@@ -43,7 +43,20 @@ export default function StoreSettingsSection({ token, showToast }) {
         <label>Horário<input value={form.pickup.hours} maxLength="300" onChange={set('pickup', 'hours')} placeholder="Seg a sex, 9h às 18h; sáb, 9h às 13h" /></label>
         <label>Instruções<textarea value={form.pickup.instructions} maxLength="500" onChange={set('pickup', 'instructions')} placeholder="Apresente documento com foto e o número do pedido." /></label>
       </fieldset>
+      <fieldset className="panel form-grid"><legend>Entrega</legend>
+        <label>Frete grátis a partir de (R$)<input type="number" min="0" step="0.01" value={form.shipping.free_shipping_min || ''} onChange={set('shipping', 'free_shipping_min')} placeholder="0,00" /></label>
+        <small className="muted-text">Deixe vazio para não oferecer frete grátis. O carrinho mostra quanto falta para o cliente ganhar o benefício.</small>
+      </fieldset>
+      <fieldset className="panel form-grid"><legend>Remetente das etiquetas</legend>
+        <small className="muted-text">Impresso nas etiquetas de envio. Campos vazios usam o nome da loja, o endereço de retirada e o telefone de atendimento.</small>
+        <label>Razão social ou nome<input value={form.sender.name} maxLength="120" onChange={set('sender', 'name')} placeholder="Território do Couro LTDA" /></label>
+        <label>CNPJ ou CPF<input value={form.sender.document} maxLength="20" onChange={set('sender', 'document')} placeholder="00.000.000/0001-00" /></label>
+        <label>Endereço completo<input value={form.sender.address} maxLength="300" onChange={set('sender', 'address')} placeholder="Rua, número, bairro, cidade/UF" /></label>
+        <label>CEP<input value={form.sender.zip_code} maxLength="9" inputMode="numeric" onChange={set('sender', 'zip_code')} placeholder="00000-000" /></label>
+        <label>Telefone<input value={form.sender.phone} maxLength="30" onChange={set('sender', 'phone')} /></label>
+      </fieldset>
       <fieldset className="panel form-grid"><legend>Atendimento</legend>
+        <small className="muted-text">Com o WhatsApp preenchido, a loja exibe um botão flutuante de atendimento.</small>
         <label>E-mail<input type="email" value={form.contact.email} maxLength="254" onChange={set('contact', 'email')} /></label>
         <label>Telefone<input value={form.contact.phone} maxLength="30" onChange={set('contact', 'phone')} /></label>
         <label>WhatsApp<input value={form.contact.whatsapp} maxLength="30" onChange={set('contact', 'whatsapp')} /></label>

@@ -69,7 +69,7 @@ router.post('/add', authenticateToken, async (req, res) => {
   const quantidade = validateQuantity(req.body.quantidade || 1);
 
   if (!Number.isInteger(produtoId) || produtoId <= 0) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   if (!quantidade) {
@@ -88,7 +88,7 @@ router.post('/add', authenticateToken, async (req, res) => {
 
     if (productResult.rowCount === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     const product = productResult.rows[0];
@@ -101,7 +101,7 @@ router.post('/add', authenticateToken, async (req, res) => {
 
     if (nextQuantity > product.estoque) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Quantidade solicitada excede o estoque disponivel.' });
+      return res.status(400).json({ error: 'Quantidade solicitada excede o estoque disponível.' });
     }
 
     await client.query(
@@ -132,7 +132,7 @@ router.put('/update/:item_id', authenticateToken, async (req, res) => {
   const quantidade = validateQuantity(req.body.quantidade);
 
   if (!Number.isInteger(itemId) || itemId <= 0) {
-    return res.status(400).json({ error: 'Item invalido.' });
+    return res.status(400).json({ error: 'Item inválido.' });
   }
 
   if (!quantidade) {
@@ -150,11 +150,11 @@ router.put('/update/:item_id', authenticateToken, async (req, res) => {
     );
 
     if (itemResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Item nao encontrado no carrinho.' });
+      return res.status(404).json({ error: 'Item não encontrado no carrinho.' });
     }
 
     if (quantidade > itemResult.rows[0].estoque) {
-      return res.status(400).json({ error: 'Quantidade solicitada excede o estoque disponivel.' });
+      return res.status(400).json({ error: 'Quantidade solicitada excede o estoque disponível.' });
     }
 
     await pool.query(
@@ -174,7 +174,7 @@ router.delete('/remove/:item_id', authenticateToken, async (req, res) => {
   const itemId = Number(req.params.item_id);
 
   if (!Number.isInteger(itemId) || itemId <= 0) {
-    return res.status(400).json({ error: 'Item invalido.' });
+    return res.status(400).json({ error: 'Item inválido.' });
   }
 
   try {
@@ -185,7 +185,7 @@ router.delete('/remove/:item_id', authenticateToken, async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Item nao encontrado no carrinho.' });
+      return res.status(404).json({ error: 'Item não encontrado no carrinho.' });
     }
 
     await pool.query('UPDATE carts SET updated_at = NOW() WHERE id = $1 AND tenant_id=$2', [cartId, req.tenant.id]);

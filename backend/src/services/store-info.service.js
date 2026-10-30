@@ -6,11 +6,16 @@ const DEFAULT_STORE_INFO = Object.freeze({
   pickup: { enabled: false, address: '', hours: '', instructions: '' },
   contact: { email: '', phone: '', whatsapp: '' },
   policies: { privacy: '', exchanges: '' },
+  // Pedido com subtotal a partir deste valor tem entrega gratis; 0 desativa a regra.
+  shipping: { free_shipping_min: 0 },
+  // Remetente impresso nas etiquetas de envio (razão social, CNPJ/CPF, endereço completo, CEP e telefone).
+  sender: { name: '', document: '', address: '', zip_code: '', phone: '' },
 });
 const LIMITS = {
   pickup: { address: 300, hours: 300, instructions: 500 },
   contact: { email: 254, phone: 30, whatsapp: 30 },
   policies: { privacy: 20000, exchanges: 20000 },
+  sender: { name: 120, document: 20, address: 300, zip_code: 9, phone: 30 },
 };
 
 function mergeStoreInfo(value = {}) {
@@ -18,6 +23,8 @@ function mergeStoreInfo(value = {}) {
     pickup: { ...DEFAULT_STORE_INFO.pickup, ...(value.pickup || {}) },
     contact: { ...DEFAULT_STORE_INFO.contact, ...(value.contact || {}) },
     policies: { ...DEFAULT_STORE_INFO.policies, ...(value.policies || {}) },
+    shipping: { ...DEFAULT_STORE_INFO.shipping, ...(value.shipping || {}) },
+    sender: { ...DEFAULT_STORE_INFO.sender, ...(value.sender || {}) },
   };
 }
 
@@ -29,12 +36,16 @@ function validateStoreInfo(input = {}) {
       const text = value[group][field];
       if (typeof text !== 'string') { errors.push(`${group}.${field} deve ser texto.`); continue; }
       value[group][field] = text.trim();
-      if (value[group][field].length > max) errors.push(`${group}.${field} deve ter no maximo ${max} caracteres.`);
+      if (value[group][field].length > max) errors.push(`${group}.${field} deve ter no máximo ${max} caracteres.`);
     }
   }
   value.pickup.enabled = value.pickup.enabled === true;
-  if (value.pickup.enabled && (!value.pickup.address || !value.pickup.hours)) errors.push('Informe endereco e horario para ativar a retirada na loja.');
-  if (value.contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.contact.email)) errors.push('E-mail de contato invalido.');
+  const freeShippingMin = Number(value.shipping.free_shipping_min || 0);
+  if (!Number.isFinite(freeShippingMin) || freeShippingMin < 0 || freeShippingMin > 1_000_000) errors.push('Valor mínimo para frete grátis inválido.');
+  value.shipping.free_shipping_min = Number.isFinite(freeShippingMin) ? Math.max(0, Math.round(freeShippingMin * 100) / 100) : 0;
+  if (value.pickup.enabled && (!value.pickup.address || !value.pickup.hours)) errors.push('Informe endereço e horário para ativar a retirada na loja.');
+  if (value.sender.zip_code && !/^d{5}-?d{3}$/.test(value.sender.zip_code)) errors.push('CEP do remetente deve estar no formato 00000-000.');
+  if (value.contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.contact.email)) errors.push('E-mail de contato inválido.');
   return { errors, value };
 }
 

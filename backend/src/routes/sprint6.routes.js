@@ -4,12 +4,12 @@ const { authenticateToken } = require('./user.routes');
 const { enqueueWebhookEvent } = require('../services/webhook.service');
 const { createPayment, verifyPayment, capturePayment, cancelPayment } = require('../services/payment.service');
 const { getStoreInfo } = require('../services/store-info.service');
+const { FIXED_SHIPPING_METHODS, getShippingProviders } = require('../services/shipping.service');
 
 const router = express.Router();
 
 const shippingMethods = {
-  standard: { label: 'Padrao', cost: 19.9, eta_days: 7 },
-  express: { label: 'Expresso', cost: 34.9, eta_days: 3 },
+  ...FIXED_SHIPPING_METHODS,
   pickup: { label: 'Retirada', cost: 0, eta_days: 1 },
 };
 
@@ -117,11 +117,11 @@ function validateAddressInput(body) {
   const zipCode = normalizeText(body.zip_code);
 
   if (label.length < 2) {
-    errors.push('Rotulo do endereco deve ter pelo menos 2 caracteres.');
+    errors.push('Rótulo do endereço deve ter pelo menos 2 caracteres.');
   }
 
   if (recipientName.length < 2) {
-    errors.push('Nome do destinatario deve ter pelo menos 2 caracteres.');
+    errors.push('Nome do destinatário deve ter pelo menos 2 caracteres.');
   }
 
   if (street.length < 3) {
@@ -169,7 +169,7 @@ function buildAddressSnapshot(user, addressRecord, fallbackText) {
   }
 
   return {
-    label: 'Endereco do perfil',
+    label: 'Endereço do perfil',
     recipient_name: user.nome,
     street: text,
     number: null,
@@ -190,12 +190,12 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
   const fallbackAddressText = normalizeText(req.body.shipping_address_text);
 
   if (!shippingMethod && !req.body.shipping_quote_id) {
-    return res.status(400).json({ error: 'Metodo de envio invalido.' });
+    return res.status(400).json({ error: 'Método de envio inválido.' });
   }
 
   const providerMethods = { sandbox: ['pix','card','boleto'], stripe: ['card'] };
   if (!providerMethods[paymentProvider]?.includes(paymentMethod)) {
-    return res.status(400).json({ error: 'Metodo de pagamento invalido.' });
+    return res.status(400).json({ error: 'Método de pagamento inválido.' });
   }
 
   try {
@@ -211,7 +211,7 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
       const addressId = Number(req.body.address_id);
 
       if (!Number.isInteger(addressId) || addressId <= 0) {
-        return res.status(400).json({ error: 'Endereco invalido.' });
+        return res.status(400).json({ error: 'Endereço inválido.' });
       }
 
       const addressResult = await pool.query(
@@ -225,17 +225,23 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
       addressRecord = addressResult.rows[0] || null;
     }
 
+    const storeInfo = await getStoreInfo(req.tenant.id);
+    const isPickup = shippingMethod === 'pickup' && !req.body.shipping_quote_id;
+    if (FIXED_SHIPPING_METHODS[shippingMethod] && !req.body.shipping_quote_id && (await getShippingProviders(req.tenant.id)).length) {
+      return res.status(400).json({ error: 'Calcule o frete pelo CEP para escolher a entrega.' });
+    }
+
     let addressSnapshot;
-    if (shippingMethod === 'pickup' && !req.body.shipping_quote_id) {
-      const { pickup } = await getStoreInfo(req.tenant.id);
-      if (!pickup.enabled) return res.status(400).json({ error: 'Retirada na loja indisponivel.' });
+    if (isPickup) {
+      const { pickup } = storeInfo;
+      if (!pickup.enabled) return res.status(400).json({ error: 'Retirada na loja indisponível.' });
       addressSnapshot = { type: 'pickup', label: 'Retirada na loja', recipient_name: req.user.nome, street: pickup.address, hours: pickup.hours, instructions: pickup.instructions, is_text_only: true };
     } else {
       addressSnapshot = buildAddressSnapshot(req.user, addressRecord, fallbackAddressText);
     }
 
     if (!addressSnapshot) {
-      return res.status(400).json({ error: 'Informe um endereco de entrega.' });
+      return res.status(400).json({ error: 'Informe um endereço de entrega.' });
     }
 
     let coupon = null;
@@ -243,11 +249,11 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
       coupon = await getCouponByCode(couponCode, req.tenant.id);
 
       if (!coupon || !coupon.active) {
-        return res.status(404).json({ error: 'Cupom nao encontrado ou inativo.' });
+        return res.status(404).json({ error: 'Cupom não encontrado ou inativo.' });
       }
 
       if (coupon.starts_at && new Date(coupon.starts_at) > new Date()) {
-        return res.status(400).json({ error: 'Cupom ainda nao esta valido.' });
+        return res.status(400).json({ error: 'Cupom ainda não está válido.' });
       }
 
       if (coupon.ends_at && new Date(coupon.ends_at) < new Date()) {
@@ -255,7 +261,7 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
       }
 
       if (Number(coupon.min_order_value) > cart.subtotal) {
-        return res.status(400).json({ error: 'Cupom exige um valor minimo de compra maior.' });
+        return res.status(400).json({ error: 'Cupom exige um valor mínimo de compra maior.' });
       }
     }
 
@@ -263,11 +269,13 @@ router.post('/checkout/start', authenticateToken, async (req, res) => {
     let shippingQuoteId = null;
     if (req.body.shipping_quote_id) {
       const quoteResult = await pool.query(`SELECT id,service_code,service_name,cost,destination_zip FROM shipping_quotes WHERE id=$1 AND usuario_id=$2 AND tenant_id=$3 AND expires_at>NOW()`,[req.body.shipping_quote_id,req.user.id,req.tenant.id]);
-      if (!quoteResult.rowCount) return res.status(400).json({ error: 'Cotacao de frete invalida ou expirada.' });
+      if (!quoteResult.rowCount) return res.status(400).json({ error: 'Cotação de frete inválida ou expirada.' });
       const quote=quoteResult.rows[0],addressZip=String(addressSnapshot.zip_code||'').replace(/\D/g,'');
-      if(addressZip&&addressZip!==quote.destination_zip)return res.status(400).json({error:'A cotacao nao corresponde ao CEP do endereco.'});
+      if(addressZip&&addressZip!==quote.destination_zip)return res.status(400).json({error:'A cotação não corresponde ao CEP do endereço.'});
       shippingQuoteId=quote.id;shippingMethod=quote.service_code;shippingCost=Number(quote.cost);
     }
+    const freeShippingMin = Number(storeInfo.shipping?.free_shipping_min || 0);
+    if (!isPickup && freeShippingMin > 0 && cart.subtotal >= freeShippingMin) shippingCost = 0;
     const discountAmount = calculateCouponDiscount(coupon, cart.subtotal);
     const total = Math.max(0, cart.subtotal + shippingCost - discountAmount);
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
@@ -314,22 +322,22 @@ router.post('/orders', authenticateToken, async (req, res) => {
   const checkoutSessionId = Number(req.body.checkout_session_id);
 
   if (!Number.isInteger(checkoutSessionId) || checkoutSessionId <= 0) {
-    return res.status(400).json({ error: 'Checkout invalido.' });
+    return res.status(400).json({ error: 'Checkout inválido.' });
   }
 
   let verifiedPayment;
   let payment;
   try {
     const pending=await pool.query('SELECT payment_provider,payment_external_id,total FROM checkout_sessions WHERE id=$1 AND usuario_id=$2 AND tenant_id=$3',[checkoutSessionId,req.user.id,req.tenant.id]);
-    if(!pending.rowCount)return res.status(404).json({error:'Sessao de checkout nao encontrada.'});
+    if(!pending.rowCount)return res.status(404).json({error:'Sessão de checkout não encontrada.'});
     payment={provider:pending.rows[0].payment_provider,externalId:pending.rows[0].payment_external_id};
     verifiedPayment=await verifyPayment(payment,req.tenant.id);
-    if(!verifiedPayment.confirmed)return res.status(402).json({error:'Pagamento ainda nao confirmado.',payment_status:verifiedPayment.status});
+    if(!verifiedPayment.confirmed)return res.status(402).json({error:'Pagamento ainda não confirmado.',payment_status:verifiedPayment.status});
     if(verifiedPayment.amount_cents!==undefined&&verifiedPayment.amount_cents!==Math.round(Number(pending.rows[0].total)*100))return res.status(409).json({error:'Valor autorizado difere do total do pedido.'});
-  } catch(error) { return res.status(error.status||502).json({error:error.message||'Nao foi possivel confirmar o pagamento.'}); }
+  } catch(error) { return res.status(error.status||502).json({error:error.message||'Não foi possível confirmar o pagamento.'}); }
   const paymentReference = verifiedPayment.reference;
   // Libera a autorizacao quando o pedido nao pode ser concluido; o cliente nao e cobrado.
-  const releasePayment = () => cancelPayment(payment, req.tenant.id).catch((error) => console.error('Falha ao cancelar autorizacao de pagamento:', error.message));
+  const releasePayment = () => cancelPayment(payment, req.tenant.id).catch((error) => console.error('Falha ao cancelar autorização de pagamento:', error.message));
   const client = await pool.connect();
 
   try {
@@ -345,20 +353,20 @@ router.post('/orders', authenticateToken, async (req, res) => {
 
     if (sessionResult.rowCount === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Sessao de checkout nao encontrada.' });
+      return res.status(404).json({ error: 'Sessão de checkout não encontrada.' });
     }
 
     const checkoutSession = sessionResult.rows[0];
 
     if (checkoutSession.status !== 'pending') {
       await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'Checkout ja foi processado.' });
+      return res.status(409).json({ error: 'Checkout já foi processado.' });
     }
 
     if (new Date(checkoutSession.expires_at) < new Date()) {
       await client.query('ROLLBACK');
       await releasePayment();
-      return res.status(400).json({ error: 'Sessao de checkout expirada.' });
+      return res.status(400).json({ error: 'Sessão de checkout expirada.' });
     }
 
     const cartItems = Array.isArray(checkoutSession.cart_snapshot)
@@ -384,7 +392,7 @@ router.post('/orders', authenticateToken, async (req, res) => {
     if (productResult.rowCount !== productIds.length) {
       await client.query('ROLLBACK');
       await releasePayment();
-      return res.status(400).json({ error: 'Um ou mais produtos do carrinho nao estao mais disponiveis.' });
+      return res.status(400).json({ error: 'Um ou mais produtos do carrinho não estão mais disponíveis.' });
     }
 
     const productMap = new Map(productResult.rows.map((product) => [product.id, product]));
@@ -439,7 +447,7 @@ router.post('/orders', authenticateToken, async (req, res) => {
       if (!stockUpdate.rowCount) {
         await client.query('ROLLBACK');
         await releasePayment();
-        return res.status(409).json({ error: 'Estoque foi alterado durante a finalizacao. Tente novamente.' });
+        return res.status(409).json({ error: 'Estoque foi alterado durante a finalização. Tente novamente.' });
       }
     }
 
@@ -500,8 +508,8 @@ router.get('/addresses', authenticateToken, async (req, res) => {
 
     return res.json({ items: result.rows });
   } catch (error) {
-    console.error('Erro ao listar enderecos:', error);
-    return res.status(500).json({ error: 'Erro interno ao listar enderecos.' });
+    console.error('Erro ao listar endereços:', error);
+    return res.status(500).json({ error: 'Erro interno ao listar endereços.' });
   }
 });
 
@@ -547,8 +555,8 @@ router.post('/addresses', authenticateToken, async (req, res) => {
     return res.status(201).json({ address: result.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Erro ao criar endereco:', error);
-    return res.status(500).json({ error: 'Erro interno ao criar endereco.' });
+    console.error('Erro ao criar endereço:', error);
+    return res.status(500).json({ error: 'Erro interno ao criar endereço.' });
   } finally {
     client.release();
   }
@@ -558,7 +566,7 @@ router.put('/addresses/:id', authenticateToken, async (req, res) => {
   const addressId = Number(req.params.id);
 
   if (!Number.isInteger(addressId) || addressId <= 0) {
-    return res.status(400).json({ error: 'Endereco invalido.' });
+    return res.status(400).json({ error: 'Endereço inválido.' });
   }
 
   const { errors, data } = validateAddressInput(req.body);
@@ -579,7 +587,7 @@ router.put('/addresses/:id', authenticateToken, async (req, res) => {
 
     if (existing.rowCount === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Endereco nao encontrado.' });
+      return res.status(404).json({ error: 'Endereço não encontrado.' });
     }
 
     if (data.is_default) {
@@ -614,8 +622,8 @@ router.put('/addresses/:id', authenticateToken, async (req, res) => {
     return res.json({ address: result.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Erro ao atualizar endereco:', error);
-    return res.status(500).json({ error: 'Erro interno ao atualizar endereco.' });
+    console.error('Erro ao atualizar endereço:', error);
+    return res.status(500).json({ error: 'Erro interno ao atualizar endereço.' });
   } finally {
     client.release();
   }
@@ -625,7 +633,7 @@ router.delete('/addresses/:id', authenticateToken, async (req, res) => {
   const addressId = Number(req.params.id);
 
   if (!Number.isInteger(addressId) || addressId <= 0) {
-    return res.status(400).json({ error: 'Endereco invalido.' });
+    return res.status(400).json({ error: 'Endereço inválido.' });
   }
 
   try {
@@ -635,13 +643,13 @@ router.delete('/addresses/:id', authenticateToken, async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Endereco nao encontrado.' });
+      return res.status(404).json({ error: 'Endereço não encontrado.' });
     }
 
-    return res.json({ message: 'Endereco removido com sucesso.' });
+    return res.json({ message: 'Endereço removido com sucesso.' });
   } catch (error) {
-    console.error('Erro ao remover endereco:', error);
-    return res.status(500).json({ error: 'Erro interno ao remover endereco.' });
+    console.error('Erro ao remover endereço:', error);
+    return res.status(500).json({ error: 'Erro interno ao remover endereço.' });
   }
 });
 
@@ -654,18 +662,18 @@ router.post('/coupons/validate', async (req, res) => {
   }
 
   if (Number.isNaN(subtotal)) {
-    return res.status(400).json({ error: 'Subtotal invalido.' });
+    return res.status(400).json({ error: 'Subtotal inválido.' });
   }
 
   try {
     const coupon = await getCouponByCode(code, req.tenant.id);
 
     if (!coupon || !coupon.active) {
-      return res.status(404).json({ error: 'Cupom nao encontrado ou inativo.' });
+      return res.status(404).json({ error: 'Cupom não encontrado ou inativo.' });
     }
 
     if (coupon.starts_at && new Date(coupon.starts_at) > new Date()) {
-      return res.status(400).json({ error: 'Cupom ainda nao esta valido.' });
+      return res.status(400).json({ error: 'Cupom ainda não está válido.' });
     }
 
     if (coupon.ends_at && new Date(coupon.ends_at) < new Date()) {
@@ -673,7 +681,7 @@ router.post('/coupons/validate', async (req, res) => {
     }
 
     if (Number(coupon.min_order_value) > subtotal) {
-      return res.status(400).json({ error: 'Cupom exige um valor minimo de compra maior.' });
+      return res.status(400).json({ error: 'Cupom exige um valor mínimo de compra maior.' });
     }
 
     const discountAmount = calculateCouponDiscount(coupon, subtotal);
@@ -729,8 +737,8 @@ router.get('/orders', authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Erro ao listar pedidos do usuario:', error);
-    return res.status(500).json({ error: 'Erro interno ao listar pedidos do usuario.' });
+    console.error('Erro ao listar pedidos do usuário:', error);
+    return res.status(500).json({ error: 'Erro interno ao listar pedidos do usuário.' });
   }
 });
 
@@ -739,7 +747,7 @@ router.get('/orders/:id/track', authenticateToken, async (req, res) => {
   const orderId = Number(req.params.id);
 
   if (!Number.isInteger(orderId) || orderId <= 0) {
-    return res.status(400).json({ error: 'Pedido invalido.' });
+    return res.status(400).json({ error: 'Pedido inválido.' });
   }
 
   try {
@@ -750,7 +758,7 @@ router.get('/orders/:id/track', authenticateToken, async (req, res) => {
     );
 
     if (orderResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Pedido nao encontrado.' });
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
     const historyResult = await pool.query(

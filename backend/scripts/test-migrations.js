@@ -17,7 +17,7 @@ const expectedMigrationCount = fs.readdirSync(path.join(__dirname, '..', 'src', 
   .filter((name) => /^\d{3}_[a-z0-9_]+\.js$/.test(name)).length;
 const expectedTables = [
   'addresses', 'audit_logs', 'auth_sessions', 'cart_items', 'carts', 'categories', 'checkout_sessions', 'coupons',
-  'integration_settings', 'inventory_api_keys', 'inventory_sync_requests', 'memberships', 'notifications', 'order_items',
+  'integration_settings', 'inventory_api_keys', 'inventory_sync_requests', 'memberships', 'notifications', 'order_items', 'order_labels',
   'order_status_history', 'orders', 'product_reviews', 'products', 'schema_migrations', 'shipping_quotes', 'shipping_tracking',
   'store_settings', 'tenant_branding', 'tenant_marketing_settings', 'tenant_password_resets', 'tenants', 'users',
   'webhook_deliveries', 'webhook_endpoints', 'wishlist_items',

@@ -33,7 +33,7 @@ describe('cancelamento de pedido (L1/L2)', () => {
     expect(JSON.parse(webhook.params[2]).data.order.items).toEqual([{ produto_id: 9, sku: 'CAM-1', quantidade: 2 }]);
   });
 
-  test('repetir o cancelamento nao devolve estoque novamente', async () => {
+  test('repetir o cancelamento não devolve estoque novamente', async () => {
     const { app, queries } = appWith('cancelled');
     const response = await request(app).put('/api/admin/orders/5/status').send({ status: 'cancelled', notes: 'Observacao' });
     expect(response.status).toBe(200);
@@ -41,9 +41,9 @@ describe('cancelamento de pedido (L1/L2)', () => {
     expect(queries.some((q) => q.sql.includes('UPDATE products p SET estoque'))).toBe(false);
   });
 
-  test('pedido ainda nao pago nao exige estorno', async () => {
+  test('pedido ainda não pago não exige estorno', async () => {
     const { app } = appWith('pending');
-    const response = await request(app).put('/api/admin/orders/5/status').send({ status: 'cancelled', notes: 'Pagamento nao concluido' });
+    const response = await request(app).put('/api/admin/orders/5/status').send({ status: 'cancelled', notes: 'Pagamento não concluido' });
     expect(response.body.refund_required).toBe(false);
   });
 });

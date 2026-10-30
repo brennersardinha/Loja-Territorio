@@ -18,7 +18,7 @@ describe('loja unica', () => {
     expect(db.query.mock.calls[0][1]).toEqual(['default']);
   });
 
-  test('responde 503 quando as migrations ainda nao criaram a loja', async () => {
+  test('responde 503 quando as migrations ainda não criaram a loja', async () => {
     const db = { query: jest.fn().mockResolvedValue({ rowCount: 0, rows: [] }) };
     const response = await request(appWith(db)).get('/');
     expect(response.status).toBe(503);

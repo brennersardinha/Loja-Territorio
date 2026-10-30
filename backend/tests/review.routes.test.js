@@ -28,10 +28,11 @@ function authenticatedUser(id = 1) {
 describe('Product review routes', () => {
   beforeEach(() => pool.query.mockReset());
 
-  test('creates a review for an authenticated customer', async () => {
+  test('creates a review for a customer who received the product', async () => {
     pool.query
       .mockResolvedValueOnce(authenticatedUser())
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 7 }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ '?column?': 1 }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 9, produto_id: 7, usuario_id: 1, nota: 5, comentario: 'Produto excelente.' }] });
 
     const res = await request(createApp())
@@ -43,6 +44,35 @@ describe('Product review routes', () => {
     expect(res.body.review).toMatchObject({ id: 9, produto_id: 7, nota: 5 });
   });
 
+  test('recusa avaliação de quem não recebeu o produto', async () => {
+    pool.query
+      .mockResolvedValueOnce(authenticatedUser())
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 7 }] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const res = await request(createApp())
+      .post('/api/reviews')
+      .set('Authorization', `Bearer ${tokenForUser()}`)
+      .send({ produto_id: 7, nota: 5, comentario: 'Nunca comprei.' });
+
+    expect(res.status).toBe(403);
+    expect(pool.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO product_reviews'))).toBe(false);
+    expect(pool.query.mock.calls[2][0]).toMatch(/o.status = 'delivered'/);
+  });
+
+  test('informa se o cliente pode avaliar', async () => {
+    pool.query
+      .mockResolvedValueOnce(authenticatedUser())
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const res = await request(createApp())
+      .get('/api/reviews/product/7/eligibility')
+      .set('Authorization', `Bearer ${tokenForUser()}`);
+
+    expect(res.body).toEqual({ can_review: true, purchased: true, already_reviewed: false });
+  });
+
   test('rejects an invalid review before querying the product', async () => {
     pool.query.mockResolvedValueOnce(authenticatedUser());
 
@@ -52,7 +82,7 @@ describe('Product review routes', () => {
       .send({ produto_id: 7, nota: 6, comentario: 'x' });
 
     expect(res.status).toBe(400);
-    expect(res.body.errors).toEqual(expect.arrayContaining([expect.stringMatching(/Nota/), expect.stringMatching(/Comentario/)]));
+    expect(res.body.errors).toEqual(expect.arrayContaining([expect.stringMatching(/Nota/), expect.stringMatching(/Comentário/)]));
   });
 
   test('lists reviews for an existing product with pagination', async () => {

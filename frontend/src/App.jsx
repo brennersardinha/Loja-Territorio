@@ -17,6 +17,7 @@ import IntegrationSection from './components/IntegrationSection';
 import MarketingSection from './components/MarketingSection';
 import StoreSettingsSection from './components/StoreSettingsSection';
 import InventorySection from './components/InventorySection';
+import LabelsPrintPage from './components/LabelsPrintPage';
 import PolicyPage from './components/PolicyPage';
 import MarketingScripts from './components/MarketingScripts';
 import RequirePermission from './components/RequirePermission';
@@ -58,7 +59,7 @@ const initialProductForm = {
   slug:'',meta_title:'',meta_description:'',
   sku:'',peso_kg:'0.3',altura_cm:'10',largura_cm:'15',comprimento_cm:'20',
 };
-const initialCategoryForm = { nome:'',descricao:'',parent_id:'',slug:'',meta_title:'',meta_description:'' };
+const initialCategoryForm = { nome:'',descricao:'',parent_id:'',slug:'',meta_title:'',meta_description:'',imagem:'' };
 const initialProductFilters = {
   busca: '',
   categoria_id: '',
@@ -113,7 +114,7 @@ function AppContent() {
   const location = useLocation();
   
   const { cartItems, setCartItems, loadGuestCart, saveGuestCart, cartSubtotal, cartItemsCount } = useCart();
-  const { fetchCart, addToCart, updateCartItem, removeCartItem } = useCartActions({
+  const { fetchCart, mergeGuestCart, addToCart, updateCartItem, removeCartItem } = useCartActions({
     token,
     setStatus,
     setLoading,
@@ -173,11 +174,15 @@ function AppContent() {
     setCheckoutResult,
     fetchAddresses,
     submitAddress,
+    selectAddress,
+    setDefaultAddress,
     removeAddress,
     previewCheckout,
     finalizeCheckout,
     shippingQuotes,
     quoteShipping,
+    quotingShipping,
+    checkoutError,
   } = useCheckout({ token, setStatus, setLoading, cartItems });
 
   const {
@@ -246,7 +251,8 @@ function AppContent() {
   useEffect(() => {
     if (token) {
       fetchProfile(token);
-      fetchCart(token);
+      // Itens adicionados como visitante entram no carrinho da conta antes de carregá-lo.
+      mergeGuestCart(token).then(() => fetchCart(token));
       fetchWishlist(token);
       fetchAddresses(token);
       fetchUserOrders();
@@ -335,7 +341,7 @@ function AppContent() {
   }
 
   const clientPage = (content) => (
-    <StoreAvailability><ClientLayout user={user} onLogout={logout} cartCount={cartItemsCount()}>
+    <StoreAvailability><ClientLayout user={user} onLogout={logout} cartCount={cartItemsCount()} categories={categories}>
       {content}
     </ClientLayout></StoreAvailability>
   );
@@ -370,6 +376,7 @@ function AppContent() {
     token,
     user,
     loading,
+    setStatus,
   };
 
   return (
@@ -396,6 +403,10 @@ function AppContent() {
           formatPrice={formatPrice}
           updateCartItem={updateCartItem}
           removeCartItem={removeCartItem}
+          addToCart={addToCart}
+          toggleWishlist={toggleWishlist}
+          couponCode={checkoutForm.coupon_code}
+          onCouponChange={(coupon_code) => setCheckoutForm((current) => ({ ...current, coupon_code }))}
         />
         )} />
 
@@ -403,18 +414,25 @@ function AppContent() {
         <CheckoutSection
           loading={loading}
           token={token}
+          user={user}
           cartItems={cartItems}
           checkoutForm={checkoutForm}
+          setCheckoutForm={setCheckoutForm}
           addressForm={addressForm}
+          setAddressForm={setAddressForm}
           addresses={addresses}
           submitAddress={submitAddress}
+          selectAddress={selectAddress}
           removeAddress={removeAddress}
           previewCheckout={previewCheckout}
           finalizeCheckout={finalizeCheckout}
           shippingQuotes={shippingQuotes}
           quoteShipping={quoteShipping}
+          quotingShipping={quotingShipping}
           checkoutPreview={checkoutPreview}
+          setCheckoutPreview={setCheckoutPreview}
           checkoutResult={checkoutResult}
+          checkoutError={checkoutError}
           formatPrice={formatPrice}
           formatDateTime={formatDateTime}
           onCheckoutChange={checkoutFormChange}
@@ -487,6 +505,12 @@ function AppContent() {
           userOrderDetail={userOrderDetail}
           userOrderTracking={userOrderTracking}
           fetchUserOrderTracking={fetchUserOrderTracking}
+          addresses={addresses}
+          addressForm={addressForm}
+          setAddressForm={setAddressForm}
+          submitAddress={submitAddress}
+          removeAddress={removeAddress}
+          setDefaultAddress={setDefaultAddress}
         />
         )} />
 
@@ -534,6 +558,8 @@ function AppContent() {
         <Route path="/admin/integracoes" element={authorizedAdminPage([PERMISSIONS.INTEGRATIONS_MANAGE], <IntegrationSection token={token} showToast={showToast} />)} />
         <Route path="/admin/marketing" element={authorizedAdminPage([PERMISSIONS.STORE_SETTINGS_MANAGE], <MarketingSection token={token} showToast={showToast} />)} />
         <Route path="/admin/loja" element={authorizedAdminPage([PERMISSIONS.STORE_SETTINGS_MANAGE], <StoreSettingsSection token={token} showToast={showToast} />)} />
+        {/* Folha de impressão sem o menu do admin: só as etiquetas e a barra de ajustes. */}
+        <Route path="/admin/etiquetas" element={<RequirePermission anyOf={[PERMISSIONS.ORDERS_UPDATE_STATUS]}><LabelsPrintPage token={token} /></RequirePermission>} />
         <Route path="/admin/estoque" element={authorizedAdminPage([PERMISSIONS.INVENTORY_KEYS_MANAGE], <InventorySection token={token} showToast={showToast} />)} />
         <Route path="/politicas/:slug" element={clientPage(<PolicyPage />)} />
         <Route path="*" element={<Navigate to="/" replace />} />

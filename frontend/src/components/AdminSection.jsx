@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { PERMISSIONS } from '../config/permissions';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -6,7 +7,11 @@ import Badge from './ui/Badge';
 import Alert from './ui/Alert';
 import EmptyState from './ui/EmptyState';
 import Skeleton from './ui/Skeleton';
+import Button from './ui/Button';
 import { getOrderStatus, nextOrderStatusOptions, orderReference, orderStatusOptions } from '../config/orderStatus';
+
+// Mesmos status aceitos pelo motor de etiquetas no backend.
+const LABEL_STATUSES = ['paid', 'processing', 'shipped', 'delivered'];
 
 function OrderStatusForm({ order, loading, onUpdate }) {
   const [status, setStatus] = React.useState(order.status);
@@ -73,6 +78,16 @@ export default function AdminSection({
   const { showToast } = useToast();
   const canReadOrders = hasPermission(PERMISSIONS.ORDERS_READ);
   const canUpdateOrderStatus = hasPermission(PERMISSIONS.ORDERS_UPDATE_STATUS);
+  const navigate = useNavigate();
+  // Seleção de pedidos para imprimir etiquetas em lote (só pedidos com pagamento confirmado).
+  const [selectedOrders, setSelectedOrders] = React.useState([]);
+  const labelEligible = (order) => LABEL_STATUSES.includes(order.status);
+  const toggleOrder = (id) => setSelectedOrders((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  const eligibleOnPage = adminOrders.filter(labelEligible).map((order) => order.id);
+  const allSelected = eligibleOnPage.length > 0 && eligibleOnPage.every((id) => selectedOrders.includes(id));
+  const openLabels = (ids) => navigate(`/admin/etiquetas?pedidos=${ids.join(',')}`);
+  // A lista de pedidos carrega ao abrir o painel (antes só aparecia depois de usar os filtros).
+  React.useEffect(() => { if (canReadOrders) fetchAdminOrders(adminOrderFilters, 1); }, [canReadOrders]);
   const canReadCustomers = hasPermission(PERMISSIONS.CUSTOMERS_READ);
   const canWriteCustomers = hasPermission(PERMISSIONS.CUSTOMERS_WRITE);
   const canReadReports = hasPermission(PERMISSIONS.REPORTS_READ);
@@ -115,7 +130,7 @@ export default function AdminSection({
       try {
         if (canManageStoreSettings) {
           const settingsResponse = await fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
-          const settingsData = await parseAdminResponse(settingsResponse, 'Falha ao carregar configuracoes.');
+          const settingsData = await parseAdminResponse(settingsResponse, 'Falha ao carregar configurações.');
           const loadedSettings = settingsData.settings || {};
           setStoreSettings(loadedSettings);
           setSettingsForm({
@@ -157,11 +172,11 @@ export default function AdminSection({
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsForm),
       });
-      await parseAdminResponse(response, 'Falha ao salvar configuracoes.');
+      await parseAdminResponse(response, 'Falha ao salvar configurações.');
       setStoreSettings(settingsForm);
-      showToast('Configuracoes atualizadas.', 'success');
+      showToast('Configurações atualizadas.', 'success');
     } catch (error) {
-      showToast(error.message || 'Falha ao salvar configuracoes.', 'error');
+      showToast(error.message || 'Falha ao salvar configurações.', 'error');
     }
   }
 
@@ -269,23 +284,30 @@ export default function AdminSection({
         <div className="panel-header"><div><span className="eyebrow">Operação</span><h3>Gestão de Pedidos</h3></div><Badge variant="neutral">{adminOrdersPagination.total || adminOrders.length} pedidos</Badge></div>
         <Filters />
 
+        {canUpdateOrderStatus && <div className="orders-label-bar"><span>{selectedOrders.length ? `${selectedOrders.length} ${selectedOrders.length === 1 ? 'pedido selecionado' : 'pedidos selecionados'}` : 'Selecione pedidos pagos para gerar etiquetas em lote.'}</span><Button size="sm" disabled={!selectedOrders.length} onClick={() => openLabels(selectedOrders)}>Gerar etiquetas</Button></div>}
+
         <div className="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Status</th><th>Data</th><th>Acoes</th></tr></thead>
+            <thead><tr>{canUpdateOrderStatus && <th><input type="checkbox" aria-label="Selecionar todos os pedidos pagos desta página" checked={allSelected} disabled={!eligibleOnPage.length} onChange={() => setSelectedOrders((current) => (allSelected ? current.filter((id) => !eligibleOnPage.includes(id)) : [...new Set([...current, ...eligibleOnPage])]))} /></th>}<th>ID</th><th>Cliente</th><th>Total</th><th>Status</th><th>Etiqueta</th><th>Data</th><th>Ações</th></tr></thead>
             <tbody>
               {adminOrders.map((o) => (
                 <tr key={o.id}>
+                  {canUpdateOrderStatus && <td><input type="checkbox" aria-label={`Selecionar pedido ${orderReference(o)}`} checked={selectedOrders.includes(o.id)} disabled={!labelEligible(o)} onChange={() => toggleOrder(o.id)} /></td>}
                   <td>{orderReference(o)}</td>
                   <td>{o.customer_name || o.customer_email}</td>
                   <td>{formatPrice(o.total)}</td>
                   <td><Badge variant={getOrderStatus(o.status, o).variant}>{getOrderStatus(o.status, o).label}</Badge></td>
+                  <td>{o.label_code ? <span className="technical-data" title={o.label_print_count ? `Impressa ${o.label_print_count}×` : 'Ainda não impressa'}>{o.label_code}</span> : <span className="muted-text">—</span>}</td>
                   <td>{formatDateTime(o.created_at)}</td>
                   <td>
-                    <button className="ghost-button compact" type="button" onClick={() => fetchAdminOrderDetails(o.id)} disabled={loading}>Detalhes</button>
+                    <div className="row-actions">
+                      <button className="ghost-button compact" type="button" onClick={() => fetchAdminOrderDetails(o.id)} disabled={loading}>Detalhes</button>
+                      {canUpdateOrderStatus && labelEligible(o) && <Link className="ghost-button compact" to={`/admin/etiquetas?pedidos=${o.id}`}>{o.label_code ? 'Reimprimir' : 'Etiqueta'}</Link>}
+                    </div>
                   </td>
                 </tr>
               ))}
-              {adminOrders.length === 0 && <tr><td colSpan="6">Nenhum pedido encontrado para os filtros atuais.</td></tr>}
+              {adminOrders.length === 0 && <tr><td colSpan={canUpdateOrderStatus ? 8 : 7}>Nenhum pedido encontrado para os filtros atuais.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -310,7 +332,7 @@ export default function AdminSection({
               ))}
             </div>
             {canUpdateOrderStatus && <OrderStatusForm order={adminOrderDetail} loading={loading} onUpdate={updateAdminOrderStatus} />}
-            <h5>Historico</h5>
+            <h5>Histórico</h5>
             <ul>
               {adminOrderDetail.status_history.map((h) => (
                 <li key={h.id}>{formatDateTime(h.created_at)} — {getOrderStatus(h.status).label} {h.notes ? `: ${h.notes}` : ''}</li>
@@ -334,7 +356,7 @@ export default function AdminSection({
       {canManageStoreSettings && (<div className="panel nested-panel">
         <div className="panel-header"><h3>Configuracoes da loja</h3></div>
         <form className="form-grid" onSubmit={submitSettings}>
-          <label>Moeda (codigo)<input value={settingsForm.currency?.code || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, code: event.target.value } }))} /></label>
+          <label>Moeda (código)<input value={settingsForm.currency?.code || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, code: event.target.value } }))} /></label>
           <label>Símbolo<input value={settingsForm.currency?.symbol || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, symbol: event.target.value } }))} /></label>
           <label>Decimais<input type="number" min="0" max="4" value={settingsForm.currency?.decimals || 2} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, decimals: Number(event.target.value) } }))} /></label>
           <label className="full-span">Métodos de pagamento (separados por vírgula)<textarea rows="3" value={(settingsForm.payment_methods || []).join(', ')} onChange={(event) => setSettingsForm((current) => ({ ...current, payment_methods: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) }))} /></label>
@@ -393,7 +415,7 @@ export default function AdminSection({
         </form>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Cliente</th><th>Email</th><th>Pedidos</th><th>Gasto</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Email</th><th>Pedidos</th><th>Gasto</th><th>Ações</th></tr></thead>
             <tbody>
               {customers.map((customer) => (
                 <tr key={customer.id}>

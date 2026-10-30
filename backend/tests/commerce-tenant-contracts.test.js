@@ -8,7 +8,7 @@ describe('contratos comerciais do checkout', () => {
   const integrations = source('src/routes/integration.routes.js');
   const immutable = source('src/migrations/sql/001_schema_inicial.sql');
 
-  test('checkout valida endereco, frete e cupom no tenant', () => {
+  test('checkout válida endereço, frete e cupom no tenant', () => {
     expect(checkout).toMatch(/addresses[\s\S]*usuario_id = \$2 AND tenant_id=\$3/);
     expect(checkout).toMatch(/shipping_quotes WHERE id=\$1 AND usuario_id=\$2 AND tenant_id=\$3/);
     expect(checkout).toMatch(/getCouponByCode\(couponCode, req\.tenant\.id\)/);
@@ -21,7 +21,7 @@ describe('contratos comerciais do checkout', () => {
     expect(checkout).toContain("await client.query('COMMIT')");
   });
 
-  test('checkout, pedido, itens, historico e tracking carregam tenant', () => {
+  test('checkout, pedido, itens, histórico e tracking carregam tenant', () => {
     for (const pattern of [
       /checkout_sessions \([\s\S]*tenant_id,usuario_id/,
       /orders \([\s\S]*tenant_id,usuario_id/,
@@ -31,13 +31,13 @@ describe('contratos comerciais do checkout', () => {
     ]) expect(checkout).toMatch(pattern);
   });
 
-  test('cotacao usa apenas carrinho, produtos e provedores do tenant', () => {
+  test('cotação usa apenas carrinho, produtos e provedores do tenant', () => {
     expect(integrations).toMatch(/c\.usuario_id=\$1 AND c\.tenant_id=\$2/);
     expect(integrations).toMatch(/quoteShipping\([\s\S]*req\.tenant\.id,db/);
     expect(integrations).toMatch(/shipping_quotes\(id,tenant_id,usuario_id/);
   });
 
-  test('snapshots financeiros e itens do pedido sao imutaveis no banco', () => {
+  test('snapshots financeiros e itens do pedido são imutaveis no banco', () => {
     expect(immutable).toContain('prevent_order_snapshot_change');
     expect(immutable).toContain('prevent_order_item_change');
     expect(checkout).toContain('[order.id, product.id, item.nome, item.quantidade, item.preco_unitario,req.tenant.id]');

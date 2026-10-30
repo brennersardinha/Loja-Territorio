@@ -18,7 +18,7 @@ export default function useAdminMetrics({ token, setStatus, setLoading, showToas
     const data = await response.json();
 
     if (!response.ok) {
-      const message = data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.';
+      const message = data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.';
       throw new Error(message);
     }
 

@@ -51,7 +51,7 @@ export default function ReviewModerationSection({
 
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Produto</th><th>Cliente</th><th>Nota</th><th>Comentario</th><th>Status</th><th>Data</th><th>Acoes</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Cliente</th><th>Nota</th><th>Comentário</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
           <tbody>
             {reviews.map((review) => (
               <tr key={review.id}>
@@ -64,7 +64,7 @@ export default function ReviewModerationSection({
                 <td>
                   {confirmingDeleteId === review.id ? (
                     <div className="row-actions">
-                      <button className="danger-button compact" type="button" onClick={async () => { await deleteReview(review.id); setConfirmingDeleteId(null); }} disabled={loading}>Confirmar exclusao</button>
+                      <button className="danger-button compact" type="button" onClick={async () => { await deleteReview(review.id); setConfirmingDeleteId(null); }} disabled={loading}>Confirmar exclusão</button>
                       <button className="ghost-button compact" type="button" onClick={() => setConfirmingDeleteId(null)} disabled={loading}>Cancelar</button>
                     </div>
                   ) : (

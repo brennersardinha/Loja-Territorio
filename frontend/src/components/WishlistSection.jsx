@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import ProductCard from './ui/ProductCard';
 import Button from './ui/Button';
+import { productUrl } from '../utils/productUrl';
 
 export default function WishlistSection({ user, wishlistItems, addToCart, toggleWishlist, formatPrice }) {
   const navigate = useNavigate();
-  const productUrl = (product) => `/produto/${product.produto_id || product.id}/${product.slug || 'produto'}`;
   return (
     <section className="panel wide-panel">
       <div className="panel-header"><h2>Lista de desejos</h2></div>

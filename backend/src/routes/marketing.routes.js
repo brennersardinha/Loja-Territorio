@@ -17,29 +17,29 @@ function createMarketingRouter({ pool, authenticateToken } = {}) {
   const auth = authenticateToken || require('./user.routes').authenticateToken;
   const admin = [auth, (req, res, next) => (getPermissions(req.user.role || (req.user.is_admin ? 'admin' : 'customer')).includes(PERMISSIONS.STORE_SETTINGS_MANAGE)
     ? next()
-    : res.status(403).json({ error: 'Voce nao possui permissao para esta acao.' }))];
+    : res.status(403).json({ error: 'Você não possui permissão para esta ação.' }))];
 
   router.get('/marketing-config', async (req, res) => {
     try {
       const result = await db.query('SELECT settings FROM tenant_marketing_settings WHERE tenant_id=$1', [req.tenant.id]);
       return res.json({ marketing: result.rows[0]?.settings || {} });
-    } catch (error) { return res.status(500).json({ error: 'Erro interno ao buscar configuracao.' }); }
+    } catch (error) { return res.status(500).json({ error: 'Erro interno ao buscar configuração.' }); }
   });
 
   router.get('/admin/marketing', ...admin, async (req, res) => {
     try {
       const result = await db.query('SELECT settings FROM tenant_marketing_settings WHERE tenant_id=$1', [req.tenant.id]);
       return res.json({ marketing: result.rows[0]?.settings || EMPTY_MARKETING });
-    } catch (error) { return res.status(500).json({ error: 'Erro interno ao buscar configuracao.' }); }
+    } catch (error) { return res.status(500).json({ error: 'Erro interno ao buscar configuração.' }); }
   });
 
   router.put('/admin/marketing', ...admin, async (req, res) => {
     const settings = validateMarketing(req.body);
-    if (!settings) return res.status(400).json({ error: 'Configuracao de marketing invalida.' });
+    if (!settings) return res.status(400).json({ error: 'Configuração de marketing inválida.' });
     try {
       await db.query('INSERT INTO tenant_marketing_settings(tenant_id,settings) VALUES($1,$2::jsonb) ON CONFLICT(tenant_id) DO UPDATE SET settings=EXCLUDED.settings,updated_at=NOW()', [req.tenant.id, JSON.stringify(settings)]);
       return res.json({ marketing: settings });
-    } catch (error) { return res.status(500).json({ error: 'Erro interno ao salvar configuracao.' }); }
+    } catch (error) { return res.status(500).json({ error: 'Erro interno ao salvar configuração.' }); }
   });
 
   return router;

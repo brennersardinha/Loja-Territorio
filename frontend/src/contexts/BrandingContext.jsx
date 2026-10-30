@@ -3,10 +3,11 @@ import { accessibleForeground, validateThemeContrast } from '../utils/colorContr
 import { uiCopy } from '../config/uiCopy';
 
 export const DEFAULT_BRANDING = {
-  store_name: 'Minha Loja', logo: '', favicon: '', banners: [],
+  store_name: 'Minha Loja', logo: '', favicon: '', banners: [], banner_mobile: '',
   colors: { primary: '#3b82f6', secondary: '#1f2937', background: '#f8f9fa' },
-  font: 'Inter', border_radius: 8,
-  texts: { welcome: uiCopy.whiteLabel.welcome, cart_empty: uiCopy.whiteLabel.cartEmpty, checkout_success: uiCopy.whiteLabel.checkoutSuccess },
+  font: 'Inter', heading_font: '', border_radius: 8,
+  texts: { welcome: uiCopy.whiteLabel.welcome, hero_subtitle: '', hero_cta: uiCopy.whiteLabel.heroCta, cart_empty: uiCopy.whiteLabel.cartEmpty, checkout_success: uiCopy.whiteLabel.checkoutSuccess },
+  home_sections: [],
 };
 
 const BrandingContext = createContext({ branding: DEFAULT_BRANDING, loading: true, storeState: 'loading' });
@@ -37,17 +38,23 @@ function applyBranding(branding) {
   root.style.setProperty('--radius-media', `${branding.border_radius + 2}px`);
   root.style.setProperty('--radius-card', `${branding.border_radius + 4}px`);
   root.style.setProperty('--font-sans', `"${branding.font}", ui-sans-serif, system-ui, sans-serif`);
+  root.style.setProperty('--font-heading', branding.heading_font ? `"${branding.heading_font}", Georgia, serif` : 'var(--font-sans)');
+  // Serifas de títulos ficam melhores em peso médio; a fonte principal mantém o negrito.
+  root.style.setProperty('--heading-weight', branding.heading_font ? '500' : '700');
   document.title = branding.store_name;
   let favicon = document.querySelector("link[rel='icon']");
   if (branding.favicon) {
     if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon); }
+    favicon.removeAttribute('type');
     favicon.href = branding.favicon;
   }
+  // Inter já vem no index.html; as demais fontes (texto e títulos) são carregadas numa única folha.
   const fontId = 'tenant-google-font';
   document.getElementById(fontId)?.remove();
-  if (branding.font !== 'Inter') {
+  const families = [...new Set([branding.font, branding.heading_font].filter((font) => font && font !== 'Inter'))];
+  if (families.length) {
     const link = document.createElement('link'); link.id = fontId; link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(branding.font).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap`;
+    link.href = `https://fonts.googleapis.com/css2?${families.map((font) => `family=${encodeURIComponent(font).replace(/%20/g, '+')}:wght@400;500;600;700`).join('&')}&display=swap`;
     document.head.appendChild(link);
   }
   return true;
@@ -62,7 +69,7 @@ export function BrandingProvider({ children }) {
     fetch('/api/branding').then(async (response) => {
       const data = await response.json();
       if (!response.ok) { const error = new Error(data.error || 'Falha ao carregar identidade visual.'); error.status = response.status; throw error; }
-      if (active) { const next = { ...DEFAULT_BRANDING, ...data.branding, colors: { ...DEFAULT_BRANDING.colors, ...data.branding?.colors }, texts: { ...DEFAULT_BRANDING.texts, ...data.branding?.texts } }; setBranding(next); setStoreState('ready'); applyBranding(next); }
+      if (active) { const next = { ...DEFAULT_BRANDING, ...data.branding, colors: { ...DEFAULT_BRANDING.colors, ...data.branding?.colors }, texts: { ...DEFAULT_BRANDING.texts, ...data.branding?.texts }, banners: Array.isArray(data.branding?.banners) ? data.branding.banners : [], home_sections: Array.isArray(data.branding?.home_sections) ? data.branding.home_sections : [], banner_mobile: data.branding?.banner_mobile || '', heading_font: data.branding?.heading_font || '' }; setBranding(next); setStoreState('ready'); applyBranding(next); }
     }).catch((error) => { if (active) setStoreState('unavailable'); applyBranding(DEFAULT_BRANDING); }).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, []);

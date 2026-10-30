@@ -80,7 +80,7 @@ describe('rotas principais', () => {
     expect(screen.queryByRole('heading', { name: 'Produtos da loja' })).not.toBeInTheDocument();
   });
 
-  it('renderiza o painel administrativo em /admin para usuario autorizado', async () => {
+  it('renderiza o painel administrativo em /admin para usuário autorizado', async () => {
     localStorage.setItem('authToken', 'token-teste');
     global.fetch = buildFetchMock({
       '/api/profile': () => authProfileResponse(['orders:read']),
@@ -90,9 +90,13 @@ describe('rotas principais', () => {
     expect(await screen.findByRole('heading', { name: 'Visão geral da loja' })).toBeInTheDocument();
   });
 
-  it('orienta o visitante a entrar antes do checkout', () => {
+  it('permite ao visitante se identificar sem sair do checkout', () => {
+    localStorage.setItem('guestCartItems', JSON.stringify([{ id: 'guest-1', produto_id: 1, nome: 'Tênis Azul', preco_unitario: 100, quantidade: 1, estoque: 3 }]));
     renderAt('/checkout');
-    expect(screen.getByText('Entre para finalizar sua compra')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Identifique-se para continuar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Criar conta e continuar' })).toBeInTheDocument();
+    expect(screen.getByText('A calcular')).toBeInTheDocument();
+    localStorage.removeItem('guestCartItems');
   });
 
   it('exibe navegação da conta para usuário autenticado', async () => {
@@ -110,7 +114,8 @@ describe('rotas principais', () => {
     });
     renderAt('/produto/7/tenis-azul');
     expect(await screen.findByRole('heading', { name: 'Tênis Azul' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Adicionar ao carrinho' })).toBeInTheDocument();
+    // Botão principal e o da barra fixa do celular (oculta por CSS no desktop).
+    expect(screen.getAllByRole('button', { name: 'Adicionar ao carrinho' })).toHaveLength(2);
     expect(screen.queryByRole('heading', { name: 'Produtos da loja' })).not.toBeInTheDocument();
   });
 
@@ -123,13 +128,13 @@ describe('rotas principais', () => {
     expect(screen.queryByRole('navigation', { name: 'Menu principal móvel' })).not.toBeInTheDocument();
   });
 
-  it('redireciona usuario nao autenticado de /admin para a conta', async () => {
+  it('redireciona usuário não autenticado de /admin para a conta', async () => {
     renderAt('/admin');
     expect(await screen.findByRole('heading', { name: 'Login' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Visão geral da loja' })).not.toBeInTheDocument();
   });
 
-  it('carrega o perfil apenas uma vez ao restaurar uma sessao', async () => {
+  it('carrega o perfil apenas uma vez ao restaurar uma sessão', async () => {
     localStorage.setItem('authToken', 'token-teste');
     global.fetch = buildFetchMock({
       '/api/profile': () => authProfileResponse([]),
@@ -141,7 +146,7 @@ describe('rotas principais', () => {
     expect(profileCalls).toHaveLength(1);
   });
 
-  it('nega acesso direto a rota administrativa sem a permissao exigida', async () => {
+  it('nega acesso direto a rota administrativa sem a permissão exigida', async () => {
     localStorage.setItem('authToken', 'token-teste');
     global.fetch = buildFetchMock({
       '/api/profile': () => authProfileResponse(['orders:read']),
@@ -166,15 +171,15 @@ describe('rotas principais', () => {
     expect((await screen.findAllByText('Falha ao carregar produtos.')).length).toBeGreaterThan(0);
   });
 
-  it('encerra a sessao e redireciona rota protegida quando o perfil falha', async () => {
+  it('encerra a sessão e redireciona rota protegida quando o perfil falha', async () => {
     localStorage.setItem('authToken', 'token-invalido');
     global.fetch = buildFetchMock({
-      '/api/profile': () => response({ error: 'Sessao expirada.' }, false),
+      '/api/profile': () => response({ error: 'Sessão expirada.' }, false),
     });
 
     renderAt('/admin');
     expect(await screen.findByRole('heading', { name: 'Login' })).toBeInTheDocument();
-    expect(screen.getByText('Sessao expirada.')).toBeInTheDocument();
+    expect(screen.getByText('Sessão expirada.')).toBeInTheDocument();
     expect(localStorage.getItem('authToken')).toBeNull();
   });
 
@@ -189,7 +194,7 @@ describe('rotas principais', () => {
     expect(screen.queryByRole('heading', { name: 'Produtos da loja' })).not.toBeInTheDocument();
   });
 
-  it('exibe gestao de pedidos para usuario autenticado com permissao orders:read', async () => {
+  it('exibe gestao de pedidos para usuário autenticado com permissão orders:read', async () => {
     localStorage.setItem('authToken', 'token-teste');
     global.fetch = buildFetchMock({
       '/api/profile': () => authProfileResponse(['orders:read']),
@@ -200,7 +205,7 @@ describe('rotas principais', () => {
     expect(screen.queryByText('Acesso restrito a administradores.')).not.toBeInTheDocument();
   });
 
-  it('mostra link Produtos na navegacao admin para usuario com products:write', async () => {
+  it('mostra link Produtos na navegacao admin para usuário com products:write', async () => {
     localStorage.setItem('authToken', 'token-teste');
     global.fetch = buildFetchMock({
       '/api/profile': () => authProfileResponse(['products:write']),

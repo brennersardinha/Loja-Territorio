@@ -34,7 +34,7 @@ function renderSection(overrides = {}) {
 describe('ReviewModerationSection', () => {
   afterEach(() => cleanup());
 
-  it('permite aprovar e rejeitar uma avaliacao pendente', () => {
+  it('permite aprovar e rejeitar uma avaliação pendente', () => {
     const props = renderSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
@@ -44,12 +44,12 @@ describe('ReviewModerationSection', () => {
     expect(props.moderateReview).toHaveBeenCalledWith(1, 'rejected');
   });
 
-  it('exige confirmacao antes de excluir uma avaliacao', () => {
+  it('exige confirmação antes de excluir uma avaliação', () => {
     const props = renderSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
-    expect(screen.getByRole('button', { name: 'Confirmar exclusao' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar exclusao' }));
+    expect(screen.getByRole('button', { name: 'Confirmar exclusão' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar exclusão' }));
 
     expect(props.deleteReview).toHaveBeenCalledWith(1);
   });

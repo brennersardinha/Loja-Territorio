@@ -18,7 +18,7 @@ async function parseResponse(response) {
     data = await response.json();
   }
   if (!response.ok) {
-    throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+    throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
   }
   return data;
 }

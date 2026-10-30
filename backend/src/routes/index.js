@@ -13,13 +13,14 @@ const { createStoreRouter } = require('./store.routes');
 const { createWebhookRouter } = require('./webhook.routes');
 const { createIntegrationRouter } = require('./integration.routes');
 const { createInventoryRouter } = require('./inventory.routes');
+const { createLabelRouter } = require('./label.routes');
 const { authenticateToken } = require('./user.routes');
 
 const router = express.Router();
 
 function rejectTenantOverride(req, res, next) {
   if (Object.prototype.hasOwnProperty.call(req.query || {}, 'tenant_id') || Object.prototype.hasOwnProperty.call(req.body || {}, 'tenant_id')) {
-    return res.status(400).json({ error: 'tenant_id nao pode ser informado na requisicao.' });
+    return res.status(400).json({ error: 'tenant_id não pode ser informado na requisicao.' });
   }
   next();
 }
@@ -36,6 +37,7 @@ router.use('/categories', categoryRoutes);
 router.use('/cart', cartRoutes);
 router.use('/wishlist', wishlistRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/admin', createLabelRouter());
 router.use('/admin', adminRoutes);
 router.use('/', sprint6Routes);
 router.use('/', createBrandingRouter());

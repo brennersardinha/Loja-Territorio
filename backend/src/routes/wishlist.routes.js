@@ -34,14 +34,14 @@ router.post('/', authenticateToken, async (req, res) => {
   const produtoId = Number(req.body.produto_id);
 
   if (!Number.isInteger(produtoId) || produtoId <= 0) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   try {
     const productResult = await pool.query('SELECT id FROM products WHERE id = $1 AND tenant_id=$2', [produtoId, req.tenant.id]);
 
     if (productResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     await pool.query(
@@ -62,7 +62,7 @@ router.delete('/:produto_id', authenticateToken, async (req, res) => {
   const produtoId = Number(req.params.produto_id);
 
   if (!Number.isInteger(produtoId) || produtoId <= 0) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   try {
@@ -72,7 +72,7 @@ router.delete('/:produto_id', authenticateToken, async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado na lista de desejos.' });
+      return res.status(404).json({ error: 'Produto não encontrado na lista de desejos.' });
     }
 
     return res.json(await getWishlist(req.user.id, req.tenant.id));

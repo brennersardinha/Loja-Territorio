@@ -2,7 +2,7 @@ const { pool } = require('../db');
 
 class IntegrationError extends Error { constructor(message, status = 502) { super(message); this.status = status; } }
 async function responseJson(response) { const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){data={raw:text.slice(0,500)};}if(!response.ok)throw new IntegrationError(data.message||data.error?.message||`Gateway respondeu HTTP ${response.status}`);return data; }
-function envValue(settings, name) { const envName=settings?.[`${name}_env`];const value=envName&&process.env[envName];if(!value)throw new IntegrationError(`Credencial ${name}_env nao configurada para o provedor.`,503);return value; }
+function envValue(settings, name) { const envName=settings?.[`${name}_env`];const value=envName&&process.env[envName];if(!value)throw new IntegrationError(`Credencial ${name}_env não configurada para o provedor.`,503);return value; }
 
 // Fluxo em duas etapas: o pagamento e autorizado no checkout e so capturado (cobrado) depois que o
 // pedido e a baixa de estoque forem gravados; se o pedido falhar, a autorizacao e cancelada.
@@ -51,7 +51,7 @@ const providers = {
 
 // Sandbox confirma qualquer pagamento: nunca pode ficar disponivel em producao.
 function isSandboxEnabled(env=process.env){return env.NODE_ENV==='production'?false:env.PAYMENT_SANDBOX_ENABLED!=='false';}
-async function getPaymentProvider(name,tenantId,db=pool) { if(!providers[name])throw new IntegrationError('Provedor de pagamento invalido.',400);if(name==='sandbox'){if(!isSandboxEnabled())throw new IntegrationError('Pagamento de teste desativado neste ambiente.',400);return{name,settings:{},adapter:providers[name]};}const r=await db.query("SELECT settings FROM integration_settings WHERE provider=$1 AND kind='payment' AND active=true AND tenant_id=$2",[name,tenantId]);if(!r.rowCount)throw new IntegrationError('Provedor de pagamento indisponivel.',400);return{name,settings:r.rows[0].settings||{},adapter:providers[name]}; }
+async function getPaymentProvider(name,tenantId,db=pool) { if(!providers[name])throw new IntegrationError('Provedor de pagamento inválido.',400);if(name==='sandbox'){if(!isSandboxEnabled())throw new IntegrationError('Pagamento de teste desativado neste ambiente.',400);return{name,settings:{},adapter:providers[name]};}const r=await db.query("SELECT settings FROM integration_settings WHERE provider=$1 AND kind='payment' AND active=true AND tenant_id=$2",[name,tenantId]);if(!r.rowCount)throw new IntegrationError('Provedor de pagamento indisponível.',400);return{name,settings:r.rows[0].settings||{},adapter:providers[name]}; }
 async function createPayment(input,tenantId,db=pool){const p=await getPaymentProvider(input.provider,tenantId,db);return p.adapter.create({...input,settings:p.settings});}
 async function verifyPayment(input,tenantId,db=pool){const p=await getPaymentProvider(input.provider,tenantId,db);return p.adapter.verify({...input,settings:p.settings});}
 async function capturePayment(input,tenantId,db=pool){const p=await getPaymentProvider(input.provider,tenantId,db);return p.adapter.capture({...input,settings:p.settings});}

@@ -10,7 +10,7 @@ export default function useAdminOrders({ token, setStatus, setLoading, showToast
     const data = await response.json();
 
     if (!response.ok) {
-      const message = data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.';
+      const message = data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.';
       throw new Error(message);
     }
 

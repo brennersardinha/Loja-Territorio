@@ -33,7 +33,7 @@ describe('adaptador Stripe', () => {
     expect(result.amount_cents).toBe(9990);
   });
 
-  test('captura autorizacao pendente e ignora pagamento ja capturado', async () => {
+  test('captura autorização pendente e ignora pagamento já capturado', async () => {
     fetch.mockReturnValueOnce(reply({ id: 'pi_1', status: 'requires_capture' })).mockReturnValueOnce(reply({ id: 'pi_1', status: 'succeeded' }));
     await expect(providers.stripe.capture({ externalId: 'pi_1', settings })).resolves.toEqual({ captured: true });
     expect(fetch.mock.calls[1][0]).toBe('https://stripe.test/v1/payment_intents/pi_1/capture');
@@ -44,12 +44,12 @@ describe('adaptador Stripe', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  test('captura que nao conclui gera erro para desfazer o pedido', async () => {
+  test('captura que não conclui gera erro para desfazer o pedido', async () => {
     fetch.mockReturnValueOnce(reply({ id: 'pi_1', status: 'requires_capture' })).mockReturnValueOnce(reply({ id: 'pi_1', status: 'processing' }));
     await expect(providers.stripe.capture({ externalId: 'pi_1', settings })).rejects.toThrow('processing');
   });
 
-  test('cancela autorizacao quando o pedido nao pode ser concluido', async () => {
+  test('cancela autorização quando o pedido não pode ser concluido', async () => {
     fetch.mockReturnValueOnce(reply({ id: 'pi_1', status: 'canceled' }));
     await expect(providers.stripe.cancel({ externalId: 'pi_1', settings })).resolves.toEqual({ canceled: true });
     expect(fetch.mock.calls[0][0]).toBe('https://stripe.test/v1/payment_intents/pi_1/cancel');
@@ -60,7 +60,7 @@ describe('adaptador Stripe', () => {
     await expect(providers.stripe.verify({ externalId: 'pi_1', settings })).rejects.toThrow('Your card was declined.');
   });
 
-  test('sem a variavel de ambiente configurada a operacao e recusada', async () => {
+  test('sem a variavel de ambiente configurada a operação e recusada', async () => {
     delete process.env.STRIPE_TEST_KEY;
     await expect(providers.stripe.verify({ externalId: 'pi_1', settings })).rejects.toMatchObject({ status: 503 });
     expect(fetch).not.toHaveBeenCalled();

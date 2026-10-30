@@ -22,7 +22,7 @@ describe('useCheckout API contract', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) });
 
     const { result } = renderHook(() => useCheckout({ token: 'token', cartItems: [] }));
-    act(() => result.current.setCheckoutForm((current) => ({ ...current, shipping_address_text: 'Rua Teste, 10' })));
+    act(() => result.current.setCheckoutForm((current) => ({ ...current, address_id: '3', shipping_method: 'standard' })));
 
     await act(() => result.current.previewCheckout());
     expect(fetch).toHaveBeenNthCalledWith(1, '/api/checkout/start', expect.objectContaining({ method: 'POST' }));
@@ -36,7 +36,7 @@ describe('useCheckout API contract', () => {
     expect(result.current.checkoutResult).toEqual(order);
   });
 
-  test('conclui o pedido da sessao informada ao voltar de redirecionamento da Stripe', async () => {
+  test('conclui o pedido da sessão informada ao voltar de redirecionamento da Stripe', async () => {
     const order = { id: 80, total: '50.00', status: 'paid' };
     global.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ order }) })
@@ -48,13 +48,13 @@ describe('useCheckout API contract', () => {
     expect(result.current.checkoutResult).toEqual(order);
   });
 
-  test('retirada na loja dispensa endereco', async () => {
+  test('retirada na loja dispensa endereço', async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ checkout: { id: 9 }, payment: {} }) });
     const setStatus = vi.fn();
     const { result } = renderHook(() => useCheckout({ token: 'token', cartItems: [], setStatus }));
     act(() => result.current.setCheckoutForm((current) => ({ ...current, shipping_method: 'pickup' })));
     await act(() => result.current.previewCheckout());
     expect(fetch).toHaveBeenCalledWith('/api/checkout/start', expect.objectContaining({ method: 'POST' }));
-    expect(setStatus).not.toHaveBeenCalledWith('Selecione ou informe um endereco de entrega.');
+    expect(setStatus).not.toHaveBeenCalledWith('Selecione ou informe um endereço de entrega.');
   });
 });

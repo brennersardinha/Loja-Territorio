@@ -13,7 +13,7 @@ function mockStripe(confirmResult) {
 describe('StripePaymentForm', () => {
   afterEach(() => { cleanup(); delete window.Stripe; vi.restoreAllMocks(); });
 
-  test('monta o Payment Element e conclui o pedido apos autorizacao', async () => {
+  test('monta o Payment Element e conclui o pedido após autorização', async () => {
     const { stripe, element } = mockStripe({ paymentIntent: { status: 'requires_capture' } });
     const onAuthorized = vi.fn(async () => {});
     render(<StripePaymentForm publishableKey="pk_test_1" clientSecret="pi_1_secret" checkoutSessionId={42} onAuthorized={onAuthorized} />);
@@ -28,7 +28,7 @@ describe('StripePaymentForm', () => {
     }));
   });
 
-  test('cartao recusado mostra o erro e nao cria o pedido', async () => {
+  test('cartao recusado mostra o erro e não cria o pedido', async () => {
     mockStripe({ error: { message: 'Seu cartão foi recusado.' } });
     const onAuthorized = vi.fn();
     render(<StripePaymentForm publishableKey="pk_test_1" clientSecret="pi_1_secret" checkoutSessionId={42} onAuthorized={onAuthorized} />);

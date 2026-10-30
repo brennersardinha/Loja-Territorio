@@ -1,8 +1,9 @@
 import { analyticsItem, trackEvent } from '../utils/analytics';
+import { GUEST_CART_KEY } from './useCart';
 
 function parseResponse(response) {
   return response.json().then((data) => {
-    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
     return data;
   });
 }
@@ -35,6 +36,21 @@ export default function useCartActions({
     } catch (error) {
       setStatus?.(error.message);
     }
+  }
+
+  // Ao entrar na conta (inclusive pelo checkout), leva os itens do carrinho de visitante para o carrinho da conta.
+  // Itens que excedem o estoque são ignorados; o carrinho do servidor passa a ser a fonte.
+  async function mergeGuestCart(currentToken = token) {
+    const guestItems = loadGuestCart?.() || [];
+    if (!currentToken || guestItems.length === 0) return;
+    for (const item of guestItems) {
+      await fetch('/api/cart/add', {
+        method: 'POST',
+        headers: authHeaders(currentToken),
+        body: JSON.stringify({ produto_id: item.produto_id, quantidade: Number(item.quantidade || 1) }),
+      }).catch(() => null);
+    }
+    try { localStorage.removeItem(GUEST_CART_KEY); } catch { /* armazenamento indisponível */ }
   }
 
   async function addToCart(product, quantidade = 1) {
@@ -73,7 +89,7 @@ export default function useCartActions({
     const nextQuantity = (existing?.quantidade || 0) + quantidade;
 
     if (nextQuantity > Number(product.estoque || 0)) {
-      setStatus?.('Quantidade solicitada excede o estoque disponivel.');
+      setStatus?.('Quantidade solicitada excede o estoque disponível.');
       return false;
     }
 
@@ -91,6 +107,7 @@ export default function useCartActions({
           preco_unitario: product.preco || product.preco_atual,
           preco_atual: product.preco || product.preco_atual,
           estoque: product.estoque,
+          categoria_id: product.categoria_id,
           categoria_nome: product.categoria_nome,
           fotos_produto: product.fotos_produto || [],
           foto_exibicao_fit: product.foto_exibicao_fit,
@@ -135,7 +152,7 @@ export default function useCartActions({
     }
 
     if (nextQuantity > Number(item.estoque || 0)) {
-      setStatus?.('Quantidade solicitada excede o estoque disponivel.');
+      setStatus?.('Quantidade solicitada excede o estoque disponível.');
       return;
     }
 
@@ -168,6 +185,7 @@ export default function useCartActions({
 
   return {
     fetchCart,
+    mergeGuestCart,
     addToCart,
     updateCartItem,
     removeCartItem,

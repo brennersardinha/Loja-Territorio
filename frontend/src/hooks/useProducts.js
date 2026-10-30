@@ -26,7 +26,7 @@ const initialProductFilters = {
 
 function parseResponse(response) {
   return response.json().then((data) => {
-    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
     return data;
   });
 }
@@ -131,7 +131,7 @@ export default function useProducts({ token, setStatus, setLoading } = {}) {
       await fetchProducts(productFilters, productPagination.page);
       setStatus?.(isEditingProduct ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
     } catch (error) {
-      setStatus?.(error.message.includes('JSON') ? 'Atributos dinamicos devem conter JSON valido.' : error.message);
+      setStatus?.(error.message.includes('JSON') ? 'Atributos dinâmicos devem conter JSON válido.' : error.message);
     } finally {
       setLoading?.(false);
     }

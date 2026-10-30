@@ -4,6 +4,8 @@ import Button from './ui/Button';
 import Field from './ui/Field';
 import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
+import Modal from './ui/Modal';
+import AddressForm from './AddressForm';
 import { getOrderStatus, orderReference } from '../config/orderStatus';
 
 export default function AccountSection({
@@ -28,9 +30,19 @@ export default function AccountSection({
   userOrderDetail,
   userOrderTracking,
   fetchUserOrderTracking,
+  addresses = [],
+  addressForm,
+  setAddressForm,
+  submitAddress,
+  removeAddress,
+  setDefaultAddress,
 }) {
   const [accountView, setAccountView] = useState('profile');
   const [resetForm, setResetForm] = useState({ senha: '', confirmacao: '' });
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [addressToRemove, setAddressToRemove] = useState(null);
+  const saveAddress = async (event) => { if (await submitAddress(event)) setAddingAddress(false); };
+  const confirmRemoveAddress = async () => { await removeAddress(addressToRemove.id); setAddressToRemove(null); };
   const isForgot = mode === 'forgot';
   const isReset = mode === 'reset';
   async function submitRecovery(event) {
@@ -45,7 +57,7 @@ export default function AccountSection({
       <div className="panel-header">
         <h2>{user ? 'Perfil' : isForgot ? 'Recuperar senha' : isReset ? 'Criar nova senha' : isRegister ? 'Cadastro' : 'Login'}</h2>
         {!user && !isForgot && !isReset && (
-          <div className="segmented-control" aria-label="Alternar formulario">
+          <div className="segmented-control" aria-label="Alternar formulário">
             <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Login</button>
             <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Cadastro</button>
           </div>
@@ -64,14 +76,20 @@ export default function AccountSection({
         </form>
       ) : (
         <>
-          <nav className="account-navigation" aria-label="Minha conta"><button className={accountView === 'profile' ? 'active' : ''} type="button" onClick={() => setAccountView('profile')}>Perfil</button><button className={accountView === 'orders' ? 'active' : ''} type="button" onClick={() => { setAccountView('orders'); fetchUserOrders(1, 10); }}>Pedidos</button><NavLink to="/checkout">Endereços</NavLink><NavLink to="/desejos">Lista de desejos</NavLink></nav>
+          <nav className="account-navigation" aria-label="Minha conta"><button className={accountView === 'profile' ? 'active' : ''} type="button" onClick={() => setAccountView('profile')}>Perfil</button><button className={accountView === 'orders' ? 'active' : ''} type="button" onClick={() => { setAccountView('orders'); fetchUserOrders(1, 10); }}>Pedidos</button><button className={accountView === 'addresses' ? 'active' : ''} type="button" onClick={() => setAccountView('addresses')}>Endereços</button><NavLink to="/desejos">Lista de desejos</NavLink></nav>
           {accountView === 'profile' && <section className="account-content" aria-labelledby="profile-title"><div className="account-section-heading"><div><span className="eyebrow">Dados pessoais</span><h3 id="profile-title">Informações do perfil</h3></div><span className="account-avatar" aria-hidden="true">{(profileForm.nome || user.nome || 'U').slice(0, 1).toUpperCase()}</span></div>
           <form className="form-grid" onSubmit={submitProfile}>
             <Field label="Nome" name="nome" value={profileForm.nome} onChange={onProfileFormChange} minLength="2" autoComplete="name" required />
             <Field label="E-mail" name="email" type="email" value={profileForm.email} onChange={onProfileFormChange} autoComplete="email" required />
-            <Field label="Endereço" as="textarea" name="endereco" rows="4" value={profileForm.endereco} onChange={onProfileFormChange} autoComplete="street-address" />
             <Button type="submit" loading={loading} loadingLabel="Salvando…">Salvar perfil</Button>
           </form>
+          </section>}
+
+          {accountView === 'addresses' && <section className="account-content" aria-labelledby="addresses-title">
+            <div className="panel-header"><div><span className="eyebrow">Entrega</span><h3 id="addresses-title">Meus endereços</h3></div>{!addingAddress && addresses.length > 0 && <Button variant="ghost" size="sm" onClick={() => setAddingAddress(true)}>+ Novo endereço</Button>}</div>
+            {(addingAddress || addresses.length === 0) && <AddressForm addressForm={addressForm} setAddressForm={setAddressForm} onSubmit={saveAddress} onCancel={addresses.length > 0 ? () => setAddingAddress(false) : null} loading={loading} defaultRecipient={user?.nome} submitLabel="Salvar endereço" />}
+            {!addingAddress && <ul className="address-list">{addresses.map((address) => <li key={address.id} className="address-card"><div><strong>{address.street}{address.number ? `, ${address.number}` : ''}{address.complement ? ` · ${address.complement}` : ''}</strong><small>{[address.neighborhood, `${address.city}/${address.state}`, address.zip_code].filter(Boolean).join(' · ')}</small><small>Recebe: {address.recipient_name}</small>{address.is_default && <Badge variant="success">Padrão</Badge>}</div><div className="address-card-actions">{!address.is_default && <Button variant="ghost" size="sm" onClick={() => setDefaultAddress(address)}>Tornar padrão</Button>}<Button variant="ghost" size="sm" onClick={() => setAddressToRemove(address)} aria-label={`Remover endereço ${address.street}`}>Remover</Button></div></li>)}</ul>}
+            <Modal open={Boolean(addressToRemove)} title="Remover endereço?" description={addressToRemove ? `${addressToRemove.street}${addressToRemove.number ? `, ${addressToRemove.number}` : ''} deixará de aparecer no checkout.` : ''} confirmLabel="Remover endereço" danger loading={loading} onClose={() => setAddressToRemove(null)} onConfirm={confirmRemoveAddress} />
           </section>}
 
           {accountView === 'orders' && <section className="account-content" aria-labelledby="orders-title">

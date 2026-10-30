@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 function parseResponse(response) {
   return response.json().then((data) => {
-    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
     return data;
   });
 }
