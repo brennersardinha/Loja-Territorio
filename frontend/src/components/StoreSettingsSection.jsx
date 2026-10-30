@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Button from './ui/Button';
 import { clearStoreInfoCache, EMPTY_STORE_INFO } from '../hooks/useStoreInfo';
 
-const empty = { pickup: EMPTY_STORE_INFO.pickup, contact: EMPTY_STORE_INFO.contact, policies: EMPTY_STORE_INFO.policies };
+const empty = { pickup: EMPTY_STORE_INFO.pickup, contact: EMPTY_STORE_INFO.contact, policies: EMPTY_STORE_INFO.policies, shipping: { free_shipping_min: 0 } };
 
 export default function StoreSettingsSection({ token, showToast }) {
   const [form, setForm] = useState(empty);
@@ -43,7 +43,12 @@ export default function StoreSettingsSection({ token, showToast }) {
         <label>Horário<input value={form.pickup.hours} maxLength="300" onChange={set('pickup', 'hours')} placeholder="Seg a sex, 9h às 18h; sáb, 9h às 13h" /></label>
         <label>Instruções<textarea value={form.pickup.instructions} maxLength="500" onChange={set('pickup', 'instructions')} placeholder="Apresente documento com foto e o número do pedido." /></label>
       </fieldset>
+      <fieldset className="panel form-grid"><legend>Entrega</legend>
+        <label>Frete grátis a partir de (R$)<input type="number" min="0" step="0.01" value={form.shipping.free_shipping_min || ''} onChange={set('shipping', 'free_shipping_min')} placeholder="0,00" /></label>
+        <small className="muted-text">Deixe vazio para não oferecer frete grátis. O carrinho mostra quanto falta para o cliente ganhar o benefício.</small>
+      </fieldset>
       <fieldset className="panel form-grid"><legend>Atendimento</legend>
+        <small className="muted-text">Com o WhatsApp preenchido, a loja exibe um botão flutuante de atendimento.</small>
         <label>E-mail<input type="email" value={form.contact.email} maxLength="254" onChange={set('contact', 'email')} /></label>
         <label>Telefone<input value={form.contact.phone} maxLength="30" onChange={set('contact', 'phone')} /></label>
         <label>WhatsApp<input value={form.contact.whatsapp} maxLength="30" onChange={set('contact', 'whatsapp')} /></label>

@@ -10,6 +10,10 @@ export const uiCopy = Object.freeze({
     noDescription: 'Produto sem descrição cadastrada.',
     unavailable: 'Produto indisponível',
     imageUnavailable: (name) => `Imagem indisponível para ${name}`,
+    badges: Object.freeze({ sale: 'Oferta', lowStock: 'Últimas unidades', new: 'Novo' }),
+  }),
+  pickup: Object.freeze({
+    short: 'Retire grátis na loja',
   }),
   feedback: Object.freeze({
     info: 'Informação',
@@ -19,6 +23,7 @@ export const uiCopy = Object.freeze({
   }),
   whiteLabel: Object.freeze({
     welcome: 'Encontre produtos que combinam com você',
+    heroCta: 'Ver produtos',
     cartEmpty: 'Seu carrinho está vazio',
     checkoutSuccess: 'Pedido realizado com sucesso.',
   }),
@@ -30,6 +35,7 @@ export function copyWithOverrides(overrides = {}) {
     ...overrides,
     actions: { ...uiCopy.actions, ...overrides.actions },
     product: { ...uiCopy.product, ...overrides.product },
+    pickup: { ...uiCopy.pickup, ...overrides.pickup },
     feedback: { ...uiCopy.feedback, ...overrides.feedback },
     whiteLabel: { ...uiCopy.whiteLabel, ...overrides.whiteLabel },
   };

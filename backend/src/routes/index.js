@@ -19,7 +19,7 @@ const router = express.Router();
 
 function rejectTenantOverride(req, res, next) {
   if (Object.prototype.hasOwnProperty.call(req.query || {}, 'tenant_id') || Object.prototype.hasOwnProperty.call(req.body || {}, 'tenant_id')) {
-    return res.status(400).json({ error: 'tenant_id nao pode ser informado na requisicao.' });
+    return res.status(400).json({ error: 'tenant_id não pode ser informado na requisicao.' });
   }
   next();
 }

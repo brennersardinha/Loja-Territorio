@@ -1,4 +1,5 @@
 import Button from './Button';
+import Icon from './Icon';
 import { productPhoto } from './ProductCard';
 import ResponsiveImage from './ResponsiveImage';
 import { uiCopy } from '../../config/uiCopy';
@@ -16,7 +17,7 @@ export default function CartItemCard({ item, formatPrice, onQuantityChange, onRe
     <article className={`cart-item-card ${unavailable ? 'cart-item-unavailable' : ''}`}>
       <div className="cart-item-media"><ResponsiveImage src={photo} alt={item.nome} fallbackLabel={uiCopy.product.imageUnavailable(item.nome)} /></div>
       <div className="cart-item-info">
-        <span className="product-category">{item.categoria_nome || 'Sem categoria'}</span>
+        {item.categoria_nome && <span className="product-card-category">{item.categoria_nome}</span>}
         <h3>{item.nome}</h3>
         {item.variante && <p>{item.variante}</p>}
         <p>{formatPrice(unitPrice)} por unidade</p>
@@ -28,8 +29,8 @@ export default function CartItemCard({ item, formatPrice, onQuantityChange, onRe
         <output aria-live="polite" aria-label="Quantidade">{quantity}</output>
         <Button variant="ghost" size="sm" onClick={() => change(quantity + 1)} disabled={quantity >= stock || unavailable} aria-label={`Aumentar quantidade de ${item.nome}`}>+</Button>
       </div>
-      <strong className="technical-data cart-item-total">{formatPrice(unitPrice * quantity)}</strong>
-      <Button variant="danger" size="sm" onClick={() => onRemove(item)} aria-label={`Remover ${item.nome} do carrinho`}>Remover</Button>
+      <strong className="cart-item-total">{formatPrice(unitPrice * quantity)}</strong>
+      <button className="remove-item-button" type="button" onClick={() => onRemove(item)} aria-label={`Remover ${item.nome} do carrinho`}><Icon name="trash" size={18} /><span aria-hidden="true">Remover</span></button>
     </article>
   );
 }

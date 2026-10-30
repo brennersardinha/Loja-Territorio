@@ -45,7 +45,7 @@ export default function AccountSection({
       <div className="panel-header">
         <h2>{user ? 'Perfil' : isForgot ? 'Recuperar senha' : isReset ? 'Criar nova senha' : isRegister ? 'Cadastro' : 'Login'}</h2>
         {!user && !isForgot && !isReset && (
-          <div className="segmented-control" aria-label="Alternar formulario">
+          <div className="segmented-control" aria-label="Alternar formulário">
             <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Login</button>
             <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Cadastro</button>
           </div>

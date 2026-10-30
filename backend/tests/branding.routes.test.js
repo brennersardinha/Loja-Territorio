@@ -10,7 +10,7 @@ describe('Branding da loja', () => {
     const result = validateBranding({ store_name: 'Loja', logo: 'javascript:alert(1)', colors: { primary: 'red' }, font: 'Comic Sans', border_radius: 99 });
     expect(result.errors.length).toBeGreaterThanOrEqual(4);
   });
-  test('usa a paleta oficial e valida contraste antes da publicacao', () => {
+  test('usa a paleta oficial e válida contraste antes da publicacao', () => {
     const valid = validateBranding({ store_name: 'Loja', colors: { primary: '#3b82f6', secondary: '#1f2937', background: '#f8f9fa' } });
     expect(valid.errors).toEqual([]);
     expect(valid.value.colors).toEqual({ primary: '#3b82f6', secondary: '#1f2937', background: '#f8f9fa' });
@@ -19,7 +19,7 @@ describe('Branding da loja', () => {
     const invalid = validateBranding({ store_name: 'Loja', colors: { primary: '#ffffff', secondary: '#f3f4f6', background: '#ffffff' } });
     expect(invalid.errors).toEqual(expect.arrayContaining([
       expect.stringContaining('texto e fundo'),
-      expect.stringContaining('cor de acao e fundo'),
+      expect.stringContaining('cor de ação e fundo'),
     ]));
   });
   test('retorna a identidade visual da loja', async () => {

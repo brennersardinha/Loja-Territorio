@@ -9,13 +9,16 @@ describe('form validation', () => {
   });
 
   it('validates price range ordering', () => {
-    expect(validatePriceFilters({ min_preco: '50', max_preco: '20' })).toMatch(/minimo/);
+    expect(validatePriceFilters({ min_preco: '50', max_preco: '20' })).toMatch(/mínimo/);
     expect(validatePriceFilters({ min_preco: '20', max_preco: '50' })).toBeNull();
   });
 
   it('requires a valid delivery address for checkout', () => {
-    expect(validateCheckoutForm({ address_id: '', shipping_address_text: '' })).toMatch(/endereco/);
-    expect(validateCheckoutForm({ address_id: '4', shipping_address_text: '' })).toBeNull();
-    expect(validateAddressForm({ label: 'Casa', recipient_name: 'Ana', street: 'Rua A', city: 'Sao Paulo', state: 'SP', zip_code: '01001-000' })).toBeNull();
+    expect(validateCheckoutForm({ address_id: '', shipping_address_text: '' })).toMatch(/endereço/);
+    expect(validateCheckoutForm({ address_id: '4', shipping_address_text: '' })).toMatch(/opção de entrega/);
+    expect(validateCheckoutForm({ address_id: '4', shipping_method: 'standard' })).toBeNull();
+    expect(validateCheckoutForm({ address_id: '4', shipping_method: '', shipping_quote_id: 'q1' })).toBeNull();
+    expect(validateCheckoutForm({ shipping_method: 'pickup' })).toBeNull();
+    expect(validateAddressForm({ label: 'Casa', recipient_name: 'Ana', street: 'Rua A', city: 'São Paulo', state: 'SP', zip_code: '01001-000' })).toBeNull();
   });
 });

@@ -6,7 +6,8 @@ export const DEFAULT_BRANDING = {
   store_name: 'Minha Loja', logo: '', favicon: '', banners: [],
   colors: { primary: '#3b82f6', secondary: '#1f2937', background: '#f8f9fa' },
   font: 'Inter', border_radius: 8,
-  texts: { welcome: uiCopy.whiteLabel.welcome, cart_empty: uiCopy.whiteLabel.cartEmpty, checkout_success: uiCopy.whiteLabel.checkoutSuccess },
+  texts: { welcome: uiCopy.whiteLabel.welcome, hero_subtitle: '', hero_cta: uiCopy.whiteLabel.heroCta, cart_empty: uiCopy.whiteLabel.cartEmpty, checkout_success: uiCopy.whiteLabel.checkoutSuccess },
+  home_sections: [],
 };
 
 const BrandingContext = createContext({ branding: DEFAULT_BRANDING, loading: true, storeState: 'loading' });
@@ -62,7 +63,7 @@ export function BrandingProvider({ children }) {
     fetch('/api/branding').then(async (response) => {
       const data = await response.json();
       if (!response.ok) { const error = new Error(data.error || 'Falha ao carregar identidade visual.'); error.status = response.status; throw error; }
-      if (active) { const next = { ...DEFAULT_BRANDING, ...data.branding, colors: { ...DEFAULT_BRANDING.colors, ...data.branding?.colors }, texts: { ...DEFAULT_BRANDING.texts, ...data.branding?.texts } }; setBranding(next); setStoreState('ready'); applyBranding(next); }
+      if (active) { const next = { ...DEFAULT_BRANDING, ...data.branding, colors: { ...DEFAULT_BRANDING.colors, ...data.branding?.colors }, texts: { ...DEFAULT_BRANDING.texts, ...data.branding?.texts }, banners: Array.isArray(data.branding?.banners) ? data.branding.banners : [], home_sections: Array.isArray(data.branding?.home_sections) ? data.branding.home_sections : [] }; setBranding(next); setStoreState('ready'); applyBranding(next); }
     }).catch((error) => { if (active) setStoreState('unavailable'); applyBranding(DEFAULT_BRANDING); }).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, []);

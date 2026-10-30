@@ -11,7 +11,7 @@ function createTenantResolver(options = {}) {
     try {
       const result = await db.query(`SELECT ${STORE_COLUMNS} FROM tenants WHERE slug=$1 LIMIT 1`, [STORE_SLUG]);
       const tenant = result.rows[0];
-      if (!tenant) return res.status(503).json({ error: 'Loja ainda nao foi configurada. Execute as migrations.', code: 'STORE_NOT_CONFIGURED' });
+      if (!tenant) return res.status(503).json({ error: 'Loja ainda não foi configurada. Execute as migrations.', code: 'STORE_NOT_CONFIGURED' });
       req.tenant = tenant;
       return next();
     } catch (error) {
@@ -39,7 +39,7 @@ function requestContextLogger(req, res, next) {
 function getTenantId(req) {
   const tenantId = Number(req?.tenant?.id);
   if (!Number.isInteger(tenantId) || tenantId < 1) {
-    const error = new Error('Contexto da loja nao foi resolvido.');
+    const error = new Error('Contexto da loja não foi resolvido.');
     error.status = 403;
     throw error;
   }

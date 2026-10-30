@@ -15,7 +15,7 @@ export function fileToImageDataUrl(file) {
 
         const context = canvas.getContext('2d');
         if (!context) {
-          reject(new Error('Nao foi possivel processar a imagem selecionada.'));
+          reject(new Error('Não foi possível processar a imagem selecionada.'));
           return;
         }
 
@@ -23,10 +23,10 @@ export function fileToImageDataUrl(file) {
         resolve(canvas.toDataURL('image/webp', 0.86));
       };
 
-      image.onerror = () => reject(new Error('Nao foi possivel processar a imagem selecionada.'));
+      image.onerror = () => reject(new Error('Não foi possível processar a imagem selecionada.'));
       image.src = reader.result;
     };
-    reader.onerror = () => reject(new Error('Nao foi possivel ler a imagem selecionada.'));
+    reader.onerror = () => reject(new Error('Não foi possível ler a imagem selecionada.'));
     reader.readAsDataURL(file);
   });
 }

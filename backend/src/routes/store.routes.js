@@ -2,6 +2,7 @@ const express = require('express');
 const { getPermissions, PERMISSIONS } = require('../config/rbac');
 const { validateStoreInfo, getStoreInfo, saveStoreInfo } = require('../services/store-info.service');
 const { isSandboxEnabled } = require('../services/payment.service');
+const { FIXED_SHIPPING_METHODS } = require('../services/shipping.service');
 
 function createStoreRouter({ pool, authenticateToken } = {}) {
   const router = express.Router();
@@ -9,18 +10,26 @@ function createStoreRouter({ pool, authenticateToken } = {}) {
   const auth = authenticateToken || require('./user.routes').authenticateToken;
   const admin = [auth, (req, res, next) => (getPermissions(req.user.role || (req.user.is_admin ? 'admin' : 'customer')).includes(PERMISSIONS.STORE_SETTINGS_MANAGE)
     ? next()
-    : res.status(403).json({ error: 'Voce nao possui permissao para esta acao.' }))];
+    : res.status(403).json({ error: 'Você não possui permissão para esta ação.' }))];
 
   // Dados publicos usados pela vitrine: retirada, contato, politicas e meios de pagamento ativos.
   router.get('/store-info', async (req, res) => {
     try {
-      const [info, stripe] = await Promise.all([
+      const [info, stripe, carriers] = await Promise.all([
         getStoreInfo(req.tenant.id, db),
         db.query("SELECT 1 FROM integration_settings WHERE tenant_id=$1 AND provider='stripe' AND kind='payment' AND active=true", [req.tenant.id]),
+        db.query("SELECT 1 FROM integration_settings WHERE tenant_id=$1 AND kind='shipping' AND active=true", [req.tenant.id]),
       ]);
       const publishableKey = String(process.env.STRIPE_PUBLISHABLE_KEY || '').trim();
+      const quotesEnabled = Boolean(carriers?.rowCount);
       return res.json({
         ...info,
+        // Com transportadora ativa o frete vem da cotacao por CEP; sem ela, dos valores fixos.
+        shipping: {
+          ...info.shipping,
+          quotes_enabled: quotesEnabled,
+          fixed_methods: quotesEnabled ? [] : Object.entries(FIXED_SHIPPING_METHODS).map(([code, method]) => ({ code, ...method })),
+        },
         payment: {
           sandbox: isSandboxEnabled(),
           stripe_publishable_key: stripe.rowCount && /^pk_(test|live)_/.test(publishableKey) ? publishableKey : null,

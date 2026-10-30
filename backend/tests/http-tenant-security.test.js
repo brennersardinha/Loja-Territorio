@@ -5,7 +5,7 @@ const { createTenantRateLimiter } = require('../src/middleware/tenant-rate-limit
 const { buildCorsOptions } = require('../src/middleware/cors');
 
 describe('controles HTTP', () => {
-  test('CORS aceita origem configurada e omite header para origem nao autorizada', async () => {
+  test('CORS aceita origem configurada e omite header para origem não autorizada', async () => {
     const app = express();
     app.use(cors(buildCorsOptions('https://alpha.example,https://beta.example','production')));
     app.get('/',(_req,res)=>res.send('ok'));

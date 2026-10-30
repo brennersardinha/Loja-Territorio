@@ -34,7 +34,7 @@ function validateWebhookUrl(value) {
 }
 
 async function assertPublicDestination(urlValue) {
-  if (!validateWebhookUrl(urlValue)) throw new Error('Destino de webhook inseguro ou invalido.');
+  if (!validateWebhookUrl(urlValue)) throw new Error('Destino de webhook inseguro ou inválido.');
   const addresses = await dns.lookup(new URL(urlValue).hostname, { all: true });
   if (!addresses.length || addresses.some(({ address }) => isPrivateIp(address))) {
     throw new Error('Destino de webhook aponta para uma rede privada.');
@@ -46,7 +46,7 @@ function signPayload(secret, timestamp, body) {
 }
 
 async function enqueueWebhookEvent(db, tenantId, eventType, data) {
-  if (!SUPPORTED_EVENTS.includes(eventType)) throw new Error(`Evento de webhook nao suportado: ${eventType}`);
+  if (!SUPPORTED_EVENTS.includes(eventType)) throw new Error(`Evento de webhook não suportado: ${eventType}`);
   const eventId = crypto.randomUUID();
   const payload = { id: eventId, type: eventType, created_at: new Date().toISOString(), data };
   await db.query(

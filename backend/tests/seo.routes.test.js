@@ -44,7 +44,7 @@ describe('SEO routes', () => {
     expect(response.text).not.toContain('atacante.example');
   });
 
-  test('escapa conteudo dinamico no XML', async () => {
+  test('escapa conteúdo dinamico no XML', async () => {
     pool.query.mockResolvedValueOnce({ rows: [{ id: 5, nome: 'Item', slug: 'termos&condicoes', created_at: '2026-08-01' }] });
     const response = await request(createApp()).get('/sitemap.xml').set('Host', 'loja.example.com');
     expect(response.text).toContain('termos&amp;condicoes');

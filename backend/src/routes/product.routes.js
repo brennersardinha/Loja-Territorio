@@ -35,11 +35,11 @@ function validateProductInput({
   }
 
   if (descricao !== undefined && descricao !== null && typeof descricao !== 'string') {
-    errors.push('Descricao deve ser um texto.');
+    errors.push('Descrição deve ser um texto.');
   }
 
   if (preco === undefined || preco === null || Number.isNaN(precoNumber) || precoNumber < 0) {
-    errors.push('Preco deve ser um numero maior ou igual a zero.');
+    errors.push('Preço deve ser um número maior ou igual a zero.');
   }
 
   if (
@@ -49,7 +49,7 @@ function validateProductInput({
     || !Number.isInteger(estoqueNumber)
     || estoqueNumber < 0
   ) {
-    errors.push('Estoque deve ser um numero inteiro maior ou igual a zero.');
+    errors.push('Estoque deve ser um número inteiro maior ou igual a zero.');
   }
 
   if (categoriaIdNumber !== null && (!Number.isInteger(categoriaIdNumber) || categoriaIdNumber <= 0)) {
@@ -82,7 +82,7 @@ function validateProductInput({
       try {
         parsedAttributes = JSON.parse(atributos_dinamicos);
       } catch (error) {
-        errors.push('Atributos dinamicos devem conter um JSON valido.');
+        errors.push('Atributos dinâmicos devem conter um JSON válido.');
       }
     } else {
       parsedAttributes = atributos_dinamicos;
@@ -93,24 +93,24 @@ function validateProductInput({
   const normalizedPosition = foto_exibicao_position ? String(foto_exibicao_position).trim() : 'center';
 
   if (!allowedFits.has(normalizedFit)) {
-    errors.push('Modo da imagem invalido.');
+    errors.push('Modo da imagem inválido.');
   }
 
   if (!allowedPositions.has(normalizedPosition)) {
-    errors.push('Posicao da imagem invalida.');
+    errors.push('Posição da imagem inválida.');
   }
-  if (meta_title && String(meta_title).length > 70) errors.push('Meta title deve ter no maximo 70 caracteres.');
-  if (meta_description && String(meta_description).length > 160) errors.push('Meta description deve ter no maximo 160 caracteres.');
+  if (meta_title && String(meta_title).length > 70) errors.push('Meta title deve ter no máximo 70 caracteres.');
+  if (meta_description && String(meta_description).length > 160) errors.push('Meta description deve ter no máximo 160 caracteres.');
   const dimensions=[peso_kg,altura_cm,largura_cm,comprimento_cm].map(Number);
-  if(dimensions.some(value=>!Number.isFinite(value)||value<=0))errors.push('Peso e dimensoes devem ser numeros maiores que zero.');
-  if(sku&&String(sku).trim().length>80)errors.push('SKU deve ter no maximo 80 caracteres.');
+  if(dimensions.some(value=>!Number.isFinite(value)||value<=0))errors.push('Peso e dimensões devem ser numeros maiores que zero.');
+  if(sku&&String(sku).trim().length>80)errors.push('SKU deve ter no máximo 80 caracteres.');
 
   if (
     parsedAttributes === null
     || typeof parsedAttributes !== 'object'
     || Array.isArray(parsedAttributes)
   ) {
-    errors.push('Atributos dinamicos devem ser um objeto JSON.');
+    errors.push('Atributos dinâmicos devem ser um objeto JSON.');
   }
 
   return {
@@ -139,11 +139,11 @@ router.get('/', async (req, res) => {
   const values = [req.tenant.id];
 
   if (!Number.isInteger(page) || page <= 0) {
-    return res.status(400).json({ error: 'Pagina deve ser um numero inteiro positivo.' });
+    return res.status(400).json({ error: 'Página deve ser um número inteiro positivo.' });
   }
 
   if (!Number.isInteger(limit) || limit <= 0 || limit > 50) {
-    return res.status(400).json({ error: 'Limite deve ser um numero inteiro entre 1 e 50.' });
+    return res.status(400).json({ error: 'Limite deve ser um número inteiro entre 1 e 50.' });
   }
 
   if (req.query.categoria_id) {
@@ -161,7 +161,7 @@ router.get('/', async (req, res) => {
     const minPreco = Number(req.query.min_preco);
 
     if (Number.isNaN(minPreco) || minPreco < 0) {
-      return res.status(400).json({ error: 'Preco minimo deve ser maior ou igual a zero.' });
+      return res.status(400).json({ error: 'Preço mínimo deve ser maior ou igual a zero.' });
     }
 
     values.push(minPreco);
@@ -172,7 +172,7 @@ router.get('/', async (req, res) => {
     const maxPreco = Number(req.query.max_preco);
 
     if (Number.isNaN(maxPreco) || maxPreco < 0) {
-      return res.status(400).json({ error: 'Preco maximo deve ser maior ou igual a zero.' });
+      return res.status(400).json({ error: 'Preço máximo deve ser maior ou igual a zero.' });
     }
 
     values.push(maxPreco);
@@ -232,7 +232,7 @@ router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   try {
@@ -247,7 +247,7 @@ router.get('/:id', async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     return res.json({ product: result.rows[0] });
@@ -261,7 +261,7 @@ router.get('/:id', async (req, res) => {
 async function skuRequiredError(data, tenantId) {
   if (data.sku) return null;
   const keys = await pool.query('SELECT 1 FROM inventory_api_keys WHERE tenant_id=$1 AND active=true LIMIT 1', [tenantId]);
-  return keys.rowCount ? 'SKU e obrigatorio enquanto a sincronizacao de estoque estiver ativa.' : null;
+  return keys.rowCount ? 'SKU é obrigatório enquanto a sincronização de estoque estiver ativa.' : null;
 }
 
 router.post('/', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRITE), async (req, res) => {
@@ -296,9 +296,9 @@ router.post('/', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRITE
 
     return res.status(201).json({ product: result.rows[0] });
   } catch (error) {
-    if (error.code === '23505') return res.status(409).json({ error: 'Slug de produto ja utilizado.' });
+    if (error.code === '23505') return res.status(409).json({ error: 'Slug de produto já utilizado.' });
     if (error.code === '23503') {
-      return res.status(400).json({ error: 'Categoria nao encontrada.' });
+      return res.status(400).json({ error: 'Categoria não encontrada.' });
     }
 
     console.error('Erro ao cadastrar produto:', error);
@@ -310,7 +310,7 @@ router.put('/:id', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRI
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   const { errors, data } = validateProductInput(req.body);
@@ -352,14 +352,14 @@ router.put('/:id', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRI
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     return res.json({ product: result.rows[0] });
   } catch (error) {
-    if (error.code === '23505') return res.status(409).json({ error: 'Slug de produto ja utilizado.' });
+    if (error.code === '23505') return res.status(409).json({ error: 'Slug de produto já utilizado.' });
     if (error.code === '23503') {
-      return res.status(400).json({ error: 'Categoria nao encontrada.' });
+      return res.status(400).json({ error: 'Categoria não encontrada.' });
     }
 
     console.error('Erro ao atualizar produto:', error);
@@ -369,13 +369,13 @@ router.put('/:id', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRI
 
 router.delete('/:id', authenticateToken, requirePermission(PERMISSIONS.PRODUCTS_WRITE), async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Produto invalido.' });
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Produto inválido.' });
   try {
     const result = await pool.query('DELETE FROM products WHERE id = $1 AND tenant_id = $2 RETURNING id', [id, req.tenant.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Produto nao encontrado.' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Produto não encontrado.' });
     return res.json({ message: 'Produto removido com sucesso.', id });
   } catch (error) {
-    if (error.code === '23503') return res.status(409).json({ error: 'Produto possui pedidos ou registros associados e nao pode ser excluido.' });
+    if (error.code === '23503') return res.status(409).json({ error: 'Produto possui pedidos ou registros associados e não pode ser excluido.' });
     console.error('Erro ao remover produto:', error);
     return res.status(500).json({ error: 'Erro interno ao remover produto.' });
   }

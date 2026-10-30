@@ -5,7 +5,7 @@ const emptyForm = { nota: '5', comentario: '' };
 
 async function parseResponse(response) {
   const data = await response.json();
-  if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+  if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
   return data;
 }
 
@@ -51,7 +51,7 @@ export default function ProductReviews({ productId, token, user }) {
       return;
     }
     if (comentario.length < 3) {
-      showToast('O comentario deve ter ao menos 3 caracteres.', 'error');
+      showToast('O comentário deve ter ao menos 3 caracteres.', 'error');
       return;
     }
 
@@ -66,7 +66,7 @@ export default function ProductReviews({ productId, token, user }) {
       setForm(emptyForm);
       setEditingId(null);
       await loadReviews();
-      showToast(editingId ? 'Avaliacao atualizada.' : 'Avaliacao enviada.', 'success');
+      showToast(editingId ? 'Avaliação atualizada.' : 'Avaliação enviada.', 'success');
     } catch (error) {
       showToast(error.message, 'error');
     } finally {
@@ -82,7 +82,7 @@ export default function ProductReviews({ productId, token, user }) {
       });
       await parseResponse(response);
       await loadReviews();
-      showToast('Avaliacao removida.', 'success');
+      showToast('Avaliação removida.', 'success');
     } catch (error) {
       showToast(error.message, 'error');
     }
@@ -91,10 +91,10 @@ export default function ProductReviews({ productId, token, user }) {
   return (
     <section className="product-reviews" aria-labelledby="reviews-heading">
       <div className="panel-header">
-        <h3 id="reviews-heading">Avaliacoes</h3>
+        <h3 id="reviews-heading">Avaliações</h3>
       </div>
 
-      {loading ? <p className="muted-text">Carregando avaliacoes...</p> : (
+      {loading ? <p className="muted-text">Carregando avaliações...</p> : (
         <div className="review-list">
           {reviews.map((review) => (
             <article key={review.id} className="summary-card review-card">
@@ -111,23 +111,23 @@ export default function ProductReviews({ productId, token, user }) {
               )}
             </article>
           ))}
-          {reviews.length === 0 && <p className="muted-text">Este produto ainda nao possui avaliacoes.</p>}
+          {reviews.length === 0 && <p className="muted-text">Seja o primeiro a avaliar este produto.</p>}
         </div>
       )}
 
       {token ? (
         <form className="form-grid review-form" onSubmit={submitReview}>
-          <h4>{editingId ? 'Editar avaliacao' : 'Avalie este produto'}</h4>
+          <h4>{editingId ? 'Editar avaliação' : 'Avalie este produto'}</h4>
           <label>Nota
             <select name="nota" value={form.nota} onChange={updateForm} disabled={submitting}>
               {[5, 4, 3, 2, 1].map((nota) => <option key={nota} value={nota}>{nota} estrela{nota > 1 ? 's' : ''}</option>)}
             </select>
           </label>
-          <label className="full-span">Comentario
+          <label className="full-span">Comentário
             <textarea name="comentario" rows="3" value={form.comentario} onChange={updateForm} disabled={submitting} minLength="3" maxLength="2000" required />
           </label>
           <div className="button-row full-span">
-            <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Enviando...' : editingId ? 'Salvar avaliacao' : 'Enviar avaliacao'}</button>
+            <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Enviando...' : editingId ? 'Salvar avaliação' : 'Enviar avaliação'}</button>
             {editingId && <button className="ghost-button" type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancelar</button>}
           </div>
         </form>

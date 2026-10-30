@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { validateCategoryForm } from '../utils/formValidation';
 
-const initialCategoryForm = { nome:'',descricao:'',parent_id:'',slug:'',meta_title:'',meta_description:'' };
+const initialCategoryForm = { nome:'',descricao:'',parent_id:'',slug:'',meta_title:'',meta_description:'',imagem:'' };
 
 function parseResponse(response) {
   return response.json().then((data) => {
-    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Nao foi possivel concluir a acao.');
+    if (!response.ok) throw new Error(data.errors?.join(' ') || data.error || 'Não foi possível concluir a ação.');
     return data;
   });
 }
@@ -67,7 +67,7 @@ export default function useCategories({ token, setStatus, setLoading } = {}) {
 
   function editCategory(category) {
     setEditingCategoryId(category.id);
-    setCategoryForm({ nome:category.nome||'',descricao:category.descricao||'',parent_id:category.parent_id||'',slug:category.slug||'',meta_title:category.meta_title||'',meta_description:category.meta_description||'' });
+    setCategoryForm({ nome:category.nome||'',descricao:category.descricao||'',parent_id:category.parent_id||'',slug:category.slug||'',meta_title:category.meta_title||'',meta_description:category.meta_description||'',imagem:category.imagem||'' });
   }
 
   return {

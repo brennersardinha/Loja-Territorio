@@ -9,7 +9,7 @@ function siteUrl(req) {
   return `${req.protocol}://${req.get('host')}`.replace(/\/$/, '');
 }
 function slugify(value) { return String(value || 'produto').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'produto'; }
-function escapeXml(value) { return String(value).replace(/[<>&'\"]/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[character])); }
+function escapeXml(value) { return String(value).replace(/[<>&'\"]/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&após;', '"': '&quot;' }[character])); }
 router.get('/robots.txt', async (req, res) => {
   res.type('text/plain').set('Cache-Control', 'public, max-age=3600');
   try {
@@ -29,7 +29,7 @@ router.get('/sitemap.xml', async (req, res) => {
       ...products.rows.map((item) => `<url><loc>${escapeXml(`${baseUrl}/produto/${item.id}/${item.slug || slugify(item.nome)}`)}</loc><lastmod>${new Date(item.created_at).toISOString().slice(0,10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`)];
     res.type('application/xml').set('Cache-Control','public, max-age=3600, stale-while-revalidate=86400');
     return res.send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`);
-  } catch (error) { console.error('Erro ao gerar sitemap:',error); return res.status(500).type('text/plain').send('Nao foi possivel gerar o sitemap.'); }
+  } catch (error) { console.error('Erro ao gerar sitemap:',error); return res.status(500).type('text/plain').send('Não foi possível gerar o sitemap.'); }
 });
 
 module.exports=router;module.exports.slugify=slugify;module.exports.escapeXml=escapeXml;module.exports.siteUrl=siteUrl;

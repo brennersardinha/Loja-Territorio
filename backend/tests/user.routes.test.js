@@ -36,7 +36,7 @@ describe('User routes', () => {
     expect(res.body.user).not.toHaveProperty('platform_role');
   });
 
-  test('perfil do cliente nao possui permissões administrativas', async () => {
+  test('perfil do cliente não possui permissões administrativas', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 1, rows: [user({ id: 2, membership_role: 'customer' })] });
     const res = await request(createApp()).get('/api/users/profile').set('Authorization', `Bearer ${token(2)}`);
     expect(res.status).toBe(200);
@@ -44,7 +44,7 @@ describe('User routes', () => {
     expect(res.body.user.permissions).toEqual([]);
   });
 
-  test('a listagem de equipe nao existe na loja unica', async () => {
+  test('a listagem de equipe não existe na loja unica', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 1, rows: [user({ membership_role: 'owner' })] });
     const res = await request(createApp()).get('/api/users').set('Authorization', `Bearer ${token(1)}`);
     expect(res.status).toBe(404);

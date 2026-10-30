@@ -22,7 +22,7 @@ export default function useSessionLogout({
     resetUserOrdersState?.();
     setCheckoutPreview?.(null);
     setCheckoutResult?.(null);
-    setStatus?.('Sessao encerrada.');
+    setStatus?.('Sessão encerrada.');
   }
 
   return { logout };

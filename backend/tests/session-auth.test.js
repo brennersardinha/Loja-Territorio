@@ -21,16 +21,16 @@ function activeSession(overrides = {}) {
     id: 10, nome: 'Ana', email: 'ana@example.com', membership_role: 'owner', membership_status: 'active', ...overrides };
 }
 
-describe('sessao contextual e CSRF', () => {
+describe('sessão contextual e CSRF', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('nega sessao vinculada a outra loja com 403', async () => {
+  test('nega sessão vinculada a outra loja com 403', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 1, rows: [activeSession()] });
     const response = await request(appFor(2)).get('/private').set('Cookie', 'ecommerce_session=token');
     expect(response.status).toBe(403);
   });
 
-  test('membership removida invalida a sessao', async () => {
+  test('membership removida inválida a sessão', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
     const response = await request(appFor()).get('/private').set('Cookie', 'ecommerce_session=revogada');
     expect(response.status).toBe(401);
@@ -54,7 +54,7 @@ describe('sessao contextual e CSRF', () => {
     expect(resolveUserRole({ membership_role: 'customer' })).toBe('customer');
   });
 
-  test('cliente autenticado nao executa mutacao administrativa', async () => {
+  test('cliente autenticado não executa mutacao administrativa', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 1, rows: [activeSession({ membership_role: 'customer' })] }).mockResolvedValueOnce({ rowCount: 1, rows: [] });
     const response = await request(appFor()).post('/admin').set('Cookie', 'ecommerce_session=token').set('X-CSRF-Token', 'csrf-ok').send({});
     expect(response.status).toBe(403);

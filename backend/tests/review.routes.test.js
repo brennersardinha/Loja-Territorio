@@ -52,7 +52,7 @@ describe('Product review routes', () => {
       .send({ produto_id: 7, nota: 6, comentario: 'x' });
 
     expect(res.status).toBe(400);
-    expect(res.body.errors).toEqual(expect.arrayContaining([expect.stringMatching(/Nota/), expect.stringMatching(/Comentario/)]));
+    expect(res.body.errors).toEqual(expect.arrayContaining([expect.stringMatching(/Nota/), expect.stringMatching(/Comentário/)]));
   });
 
   test('lists reviews for an existing product with pagination', async () => {

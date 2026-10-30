@@ -3,24 +3,42 @@ import ProductCard from './ui/ProductCard';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
 import Skeleton from './ui/Skeleton';
+import Icon from './ui/Icon';
+import ResponsiveImage from './ui/ResponsiveImage';
+import RelatedProducts from './RelatedProducts';
 import { useBranding } from '../contexts/BrandingContext';
+import useStoreInfo from '../hooks/useStoreInfo';
+import { whatsappLink } from '../layouts/ClientLayout';
+import { productUrl } from '../utils/productUrl';
+import { uiCopy } from '../config/uiCopy';
 
 export default function HomeSection({ products, categories, loading, error, formatPrice, addToCart, toggleWishlist }) {
   const navigate = useNavigate();
   const { branding } = useBranding();
+  const { storeInfo } = useStoreInfo();
+  const { pickup, contact } = storeInfo;
+  const [heroImage, ...extraBanners] = branding.banners || [];
+  const sections = (branding.home_sections || []).filter((section) => categories.some((category) => Number(category.id) === Number(section.category_id)));
   const featured = products.slice(0, 4);
+  const whatsapp = whatsappLink(contact.whatsapp);
   const openCatalog = (params = {}) => {
     const query = new URLSearchParams(params);
     navigate(`/buscar${query.size ? `?${query}` : ''}`);
   };
+  const shelfProps = { formatPrice, addToCart, toggleWishlist, pickupAvailable: pickup.enabled };
 
   return <div className="home-page">
-    <section className="home-hero" aria-labelledby="home-title">
-      <div className="home-hero-content"><span className="eyebrow">Novidades para você</span><h1 id="home-title">{branding.texts.welcome}</h1><p>Explore novidades, ofertas e escolhas especiais em uma experiência de compra simples e segura.</p><div className="button-row"><Button size="lg" onClick={() => openCatalog()}>Ver produtos</Button><Button variant="secondary" size="lg" onClick={() => openCatalog({ ordenacao: 'menor_preco' })}>Explorar ofertas</Button></div></div>
-      <div className="home-hero-art" aria-hidden="true"><span>Compra fácil</span><strong>Do catálogo até sua casa.</strong></div>
+    <section className={`home-hero ${heroImage ? 'with-image' : ''}`} aria-labelledby="home-title">
+      {heroImage && <ResponsiveImage className="home-hero-image" src={heroImage} alt="" eager />}
+      <div className="home-hero-content"><h1 id="home-title">{branding.texts.welcome}</h1>{branding.texts.hero_subtitle && <p>{branding.texts.hero_subtitle}</p>}<div className="button-row"><Button size="lg" onClick={() => openCatalog()}>{branding.texts.hero_cta || uiCopy.whiteLabel.heroCta}</Button></div></div>
     </section>
-    {categories.length > 0 && <section className="home-section" aria-labelledby="categories-title"><div className="section-heading"><div><span className="eyebrow">Explore</span><h2 id="categories-title">Compre por categoria</h2></div></div><div className="category-grid">{categories.slice(0, 6).map((category) => <button key={category.id} className="category-card" type="button" onClick={() => openCatalog({ categoria_id: category.id })}><span aria-hidden="true">→</span><strong>{category.nome}</strong><small>Ver produtos</small></button>)}</div></section>}
-    <section className="home-section" aria-labelledby="featured-title"><div className="section-heading"><div><span className="eyebrow">Seleção da loja</span><h2 id="featured-title">Produtos em destaque</h2></div><Button variant="ghost" size="sm" onClick={() => openCatalog()}>Ver todos →</Button></div>{loading && !error && featured.length === 0 && <div className="home-products" aria-label="Carregando produtos">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} />)}</div>}{(!loading || error) && featured.length === 0 && <EmptyState title={error || 'Nenhum produto disponível'} description={error ? 'Não foi possível carregar as novidades. Tente novamente em instantes.' : 'Visite novamente em breve para conferir as novidades.'} actionLabel="Abrir catálogo" onAction={() => openCatalog()} />}{featured.length > 0 && <div className="home-products">{featured.map((product) => <ProductCard key={product.id} product={product} formatPrice={formatPrice} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onDetails={(item) => navigate(`/produto/${item.id}/${item.slug || 'produto'}`)} />)}</div>}</section>
-    <section className="benefits-grid" aria-label="Benefícios da loja"><article><span aria-hidden="true">◇</span><div><strong>Entrega acompanhada</strong><p>Acompanhe seu pedido em todas as etapas.</p></div></article><article><span aria-hidden="true">✓</span><div><strong>Compra segura</strong><p>Seus dados protegidos durante o pagamento.</p></div></article><article><span aria-hidden="true">↺</span><div><strong>Troca descomplicada</strong><p>Suporte claro quando você precisar.</p></div></article></section>
+    {(pickup.enabled || whatsapp) && <ul className="home-perks" aria-label="Vantagens da loja">
+      {pickup.enabled && <li><Icon name="store" /><span><strong>{uiCopy.pickup.short}</strong><small>{pickup.address}</small></span></li>}
+      {whatsapp && <li><Icon name="chat" /><span><strong>Atendimento pelo WhatsApp</strong><small><a href={whatsapp} target="_blank" rel="noreferrer">Fale com a gente</a></small></span></li>}
+    </ul>}
+    {categories.length > 0 && <section className="home-section" aria-labelledby="categories-title"><div className="section-heading"><h2 id="categories-title">Compre por categoria</h2></div><div className="category-grid">{categories.filter((category) => !category.parent_id).slice(0, 6).map((category) => <button key={category.id} className={`category-card ${category.imagem ? 'with-image' : ''}`} type="button" onClick={() => openCatalog({ categoria_id: category.id })}>{category.imagem && <ResponsiveImage className="category-card-image" src={category.imagem} alt="" />}<strong>{category.nome}</strong><small>Ver produtos →</small></button>)}</div></section>}
+    {sections.map((section) => <RelatedProducts key={`${section.category_id}-${section.title}`} title={section.title} categoryId={section.category_id} showViewAll {...shelfProps} />)}
+    {sections.length === 0 && <section className="home-section" aria-labelledby="featured-title"><div className="section-heading"><h2 id="featured-title">Novidades</h2><Button variant="ghost" size="sm" onClick={() => openCatalog()}>Ver todos →</Button></div>{loading && !error && featured.length === 0 && <div className="home-products" aria-label="Carregando produtos">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} />)}</div>}{(!loading || error) && featured.length === 0 && <EmptyState title={error || 'Nenhum produto disponível'} description={error ? 'Não foi possível carregar as novidades. Tente novamente em instantes.' : 'Visite novamente em breve para conferir as novidades.'} actionLabel="Abrir catálogo" onAction={() => openCatalog()} />}{featured.length > 0 && <div className="home-products">{featured.map((product) => <ProductCard key={product.id} product={product} formatPrice={formatPrice} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onDetails={(item) => navigate(productUrl(item))} pickupAvailable={pickup.enabled} />)}</div>}</section>}
+    {extraBanners.length > 0 && <div className="store-banners" aria-label="Destaques da loja">{extraBanners.map((banner, index) => <ResponsiveImage key={banner.slice(-32) + index} src={banner} alt={`Destaque ${index + 2} da loja`} />)}</div>}
   </div>;
 }

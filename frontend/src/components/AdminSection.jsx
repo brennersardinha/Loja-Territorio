@@ -115,7 +115,7 @@ export default function AdminSection({
       try {
         if (canManageStoreSettings) {
           const settingsResponse = await fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
-          const settingsData = await parseAdminResponse(settingsResponse, 'Falha ao carregar configuracoes.');
+          const settingsData = await parseAdminResponse(settingsResponse, 'Falha ao carregar configurações.');
           const loadedSettings = settingsData.settings || {};
           setStoreSettings(loadedSettings);
           setSettingsForm({
@@ -157,11 +157,11 @@ export default function AdminSection({
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsForm),
       });
-      await parseAdminResponse(response, 'Falha ao salvar configuracoes.');
+      await parseAdminResponse(response, 'Falha ao salvar configurações.');
       setStoreSettings(settingsForm);
-      showToast('Configuracoes atualizadas.', 'success');
+      showToast('Configurações atualizadas.', 'success');
     } catch (error) {
-      showToast(error.message || 'Falha ao salvar configuracoes.', 'error');
+      showToast(error.message || 'Falha ao salvar configurações.', 'error');
     }
   }
 
@@ -271,7 +271,7 @@ export default function AdminSection({
 
         <div className="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Status</th><th>Data</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
             <tbody>
               {adminOrders.map((o) => (
                 <tr key={o.id}>
@@ -310,7 +310,7 @@ export default function AdminSection({
               ))}
             </div>
             {canUpdateOrderStatus && <OrderStatusForm order={adminOrderDetail} loading={loading} onUpdate={updateAdminOrderStatus} />}
-            <h5>Historico</h5>
+            <h5>Histórico</h5>
             <ul>
               {adminOrderDetail.status_history.map((h) => (
                 <li key={h.id}>{formatDateTime(h.created_at)} — {getOrderStatus(h.status).label} {h.notes ? `: ${h.notes}` : ''}</li>
@@ -334,7 +334,7 @@ export default function AdminSection({
       {canManageStoreSettings && (<div className="panel nested-panel">
         <div className="panel-header"><h3>Configuracoes da loja</h3></div>
         <form className="form-grid" onSubmit={submitSettings}>
-          <label>Moeda (codigo)<input value={settingsForm.currency?.code || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, code: event.target.value } }))} /></label>
+          <label>Moeda (código)<input value={settingsForm.currency?.code || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, code: event.target.value } }))} /></label>
           <label>Símbolo<input value={settingsForm.currency?.symbol || ''} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, symbol: event.target.value } }))} /></label>
           <label>Decimais<input type="number" min="0" max="4" value={settingsForm.currency?.decimals || 2} onChange={(event) => setSettingsForm((current) => ({ ...current, currency: { ...current.currency, decimals: Number(event.target.value) } }))} /></label>
           <label className="full-span">Métodos de pagamento (separados por vírgula)<textarea rows="3" value={(settingsForm.payment_methods || []).join(', ')} onChange={(event) => setSettingsForm((current) => ({ ...current, payment_methods: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) }))} /></label>
@@ -393,7 +393,7 @@ export default function AdminSection({
         </form>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Cliente</th><th>Email</th><th>Pedidos</th><th>Gasto</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Email</th><th>Pedidos</th><th>Gasto</th><th>Ações</th></tr></thead>
             <tbody>
               {customers.map((customer) => (
                 <tr key={customer.id}>

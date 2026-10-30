@@ -16,7 +16,7 @@ describe('pagamento de teste (sandbox)', () => {
     } finally { process.env.NODE_ENV = previous; }
   });
 
-  test('somente stripe e sandbox estao disponiveis', () => {
+  test('somente stripe e sandbox estão disponíveis', () => {
     expect(Object.keys(providers).sort()).toEqual(['sandbox', 'stripe']);
   });
 });

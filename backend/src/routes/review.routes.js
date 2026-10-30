@@ -15,11 +15,11 @@ function validateReviewInput(body = {}) {
   const comentario = typeof body.comentario === 'string' ? body.comentario.trim() : '';
 
   if (!Number.isInteger(nota) || nota < 1 || nota > 5) {
-    errors.push('Nota deve ser um numero inteiro entre 1 e 5.');
+    errors.push('Nota deve ser um número inteiro entre 1 e 5.');
   }
 
   if (comentario.length < 3 || comentario.length > 2000) {
-    errors.push('Comentario deve ter entre 3 e 2000 caracteres.');
+    errors.push('Comentário deve ter entre 3 e 2000 caracteres.');
   }
 
   return { errors, data: { nota, comentario } };
@@ -33,14 +33,14 @@ router.get('/product/:produto_id', async (req, res) => {
   const offset = (page - 1) * limit;
 
   if (!produtoId) {
-    return res.status(400).json({ error: 'Produto invalido.' });
+    return res.status(400).json({ error: 'Produto inválido.' });
   }
 
   try {
     res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300').vary('Host');
     const productResult = await pool.query('SELECT id FROM products WHERE id = $1 AND tenant_id=$2', [produtoId, req.tenant.id]);
     if (productResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     const countResult = await pool.query(
@@ -64,8 +64,8 @@ router.get('/product/:produto_id', async (req, res) => {
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('Erro ao listar avaliacoes:', error);
-    return res.status(500).json({ error: 'Erro interno ao listar avaliacoes.' });
+    console.error('Erro ao listar avaliações:', error);
+    return res.status(500).json({ error: 'Erro interno ao listar avaliações.' });
   }
 });
 
@@ -79,7 +79,7 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const productResult = await pool.query('SELECT id FROM products WHERE id = $1 AND tenant_id=$2', [produtoId, req.tenant.id]);
     if (productResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto nao encontrado.' });
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     const result = await pool.query(
@@ -91,10 +91,10 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(201).json({ review: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'Voce ja avaliou este produto.' });
+      return res.status(409).json({ error: 'Você já avaliou este produto.' });
     }
-    console.error('Erro ao criar avaliacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao criar avaliacao.' });
+    console.error('Erro ao criar avaliação:', error);
+    return res.status(500).json({ error: 'Erro interno ao criar avaliação.' });
   }
 });
 
@@ -102,7 +102,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   const reviewId = parsePositiveInteger(req.params.id);
   const { errors, data } = validateReviewInput(req.body);
 
-  if (!reviewId) errors.push('Avaliacao invalida.');
+  if (!reviewId) errors.push('Avaliação inválida.');
   if (errors.length > 0) return res.status(400).json({ errors });
 
   try {
@@ -114,18 +114,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
       [data.nota, data.comentario, reviewId, req.user.id, req.tenant.id],
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Avaliacao nao encontrada ou nao pertence ao usuario.' });
+      return res.status(404).json({ error: 'Avaliação não encontrada ou não pertence ao usuário.' });
     }
     return res.json({ review: result.rows[0] });
   } catch (error) {
-    console.error('Erro ao atualizar avaliacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao atualizar avaliacao.' });
+    console.error('Erro ao atualizar avaliação:', error);
+    return res.status(500).json({ error: 'Erro interno ao atualizar avaliação.' });
   }
 });
 
 router.delete('/:id', authenticateToken, async (req, res) => {
   const reviewId = parsePositiveInteger(req.params.id);
-  if (!reviewId) return res.status(400).json({ error: 'Avaliacao invalida.' });
+  if (!reviewId) return res.status(400).json({ error: 'Avaliação inválida.' });
 
   try {
     const result = await pool.query(
@@ -133,12 +133,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       [reviewId, req.user.id, req.tenant.id],
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Avaliacao nao encontrada ou nao pertence ao usuario.' });
+      return res.status(404).json({ error: 'Avaliação não encontrada ou não pertence ao usuário.' });
     }
     return res.status(204).send();
   } catch (error) {
-    console.error('Erro ao excluir avaliacao:', error);
-    return res.status(500).json({ error: 'Erro interno ao excluir avaliacao.' });
+    console.error('Erro ao excluir avaliação:', error);
+    return res.status(500).json({ error: 'Erro interno ao excluir avaliação.' });
   }
 });
 

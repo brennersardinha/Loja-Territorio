@@ -28,9 +28,9 @@ describe('ProductReviews', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [{ id: 3, usuario_id: 1, usuario_nome: 'Ana', nota: 5, comentario: 'Excelente produto' }] }) });
 
     renderReviews({ token: 'token-teste', user: { id: 1 } });
-    await screen.findByText('Este produto ainda nao possui avaliacoes.');
-    fireEvent.change(screen.getByLabelText('Comentario'), { target: { value: 'Excelente produto' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar avaliacao' }));
+    await screen.findByText('Seja o primeiro a avaliar este produto.');
+    fireEvent.change(screen.getByLabelText('Comentário'), { target: { value: 'Excelente produto' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/reviews', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByText('Excelente produto')).toBeInTheDocument();

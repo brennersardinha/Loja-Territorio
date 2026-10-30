@@ -54,8 +54,8 @@ function sanitizeUser(user, tenant) {
 
 function requirePermission(permission) {
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ error: 'Sessao de autenticacao nao informada.' });
-    if (!getPermissions(resolveUserRole(req.user)).includes(permission)) return res.status(403).json({ error: 'Voce nao possui permissao para esta acao.' });
+    if (!req.user) return res.status(401).json({ error: 'Sessão de autenticação não informada.' });
+    if (!getPermissions(resolveUserRole(req.user)).includes(permission)) return res.status(403).json({ error: 'Você não possui permissão para esta ação.' });
     return next();
   };
 }
@@ -91,11 +91,11 @@ async function authenticateToken(req, res, next) {
                                          AND m.status='active' AND t.status='active'`, [hash(sessionToken)]);
       if (!result.rowCount) {
         clearSessionCookies(res);
-        return res.status(401).json({ error: 'Sessao invalida, revogada ou sem acesso a esta loja.' });
+        return res.status(401).json({ error: 'Sessão inválida, revogada ou sem acesso a esta loja.' });
       }
-      if (req.tenant && Number(result.rows[0].tenant_id) !== Number(req.tenant.id)) return res.status(403).json({ error: 'Sessao nao autorizada para esta loja.' });
+      if (req.tenant && Number(result.rows[0].tenant_id) !== Number(req.tenant.id)) return res.status(403).json({ error: 'Sessão não autorizada para esta loja.' });
       const user = result.rows[0];
-      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && hash(csrfValue(req)) !== user.csrf_token_hash) return res.status(403).json({ error: 'Token CSRF invalido.' });
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && hash(csrfValue(req)) !== user.csrf_token_hash) return res.status(403).json({ error: 'Token CSRF inválido.' });
       user.role = resolveUserRole(user);
       req.user = user;
       req.membership = { id: user.membership_id, role: user.membership_role, status: user.membership_status };
@@ -104,24 +104,24 @@ async function authenticateToken(req, res, next) {
       return next();
     }
     const bearer = String(req.headers.authorization || '');
-    if (!bearer.startsWith('Bearer ')) return res.status(401).json({ error: 'Sessao de autenticacao nao informada.' });
+    if (!bearer.startsWith('Bearer ')) return res.status(401).json({ error: 'Sessão de autenticação não informada.' });
     const payload = jwt.verify(bearer.slice(7), jwtSecret);
     const tenantId = req.tenant?.id || null;
     const result = await pool.query(`SELECT u.id,u.nome,u.email,u.endereco,u.created_at,u.is_admin,u.role,
                                             m.id membership_id,m.role membership_role,m.status membership_status
                                      FROM users u LEFT JOIN memberships m ON m.user_id=u.id AND m.tenant_id=$2 WHERE u.id=$1`, [payload.sub, tenantId]);
-    if (!result.rowCount || (tenantId && result.rows[0].membership_status !== 'active')) return res.status(401).json({ error: 'Usuario sem membership ativa nesta loja.' });
+    if (!result.rowCount || (tenantId && result.rows[0].membership_status !== 'active')) return res.status(401).json({ error: 'Usuário sem membership ativa nesta loja.' });
     result.rows[0].role = resolveUserRole(result.rows[0]);
     req.user = result.rows[0];
     req.membership = result.rows[0].membership_id ? { id: result.rows[0].membership_id, role: result.rows[0].membership_role, status: result.rows[0].membership_status } : null;
     return next();
-  } catch (error) { return res.status(401).json({ error: 'Sessao invalida ou expirada.' }); }
+  } catch (error) { return res.status(401).json({ error: 'Sessão inválida ou expirada.' }); }
 }
 
 function validateAuthInput({ nome, email, senha }, requireName = false) {
   const errors = [];
   if (requireName && (!nome || nome.trim().length < 2)) errors.push('Nome deve ter pelo menos 2 caracteres.');
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email invalido.');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email inválido.');
   if (!senha || senha.length < 6) errors.push('Senha deve ter pelo menos 6 caracteres.');
   return errors;
 }
@@ -144,7 +144,7 @@ router.post('/register', async (req, res) => {
     return res.status(201).json({ user: sanitizeUser({ ...userResult.rows[0], membership_id: membership.rows[0].id, membership_role: membership.rows[0].role }, req.tenant), csrf_token: session.csrfToken });
   } catch (error) {
     await client.query('ROLLBACK');
-    return res.status(error.code === '23505' ? 409 : 500).json({ error: error.code === '23505' ? 'Email ja cadastrado.' : 'Erro interno ao cadastrar usuario.' });
+    return res.status(error.code === '23505' ? 409 : 500).json({ error: error.code === '23505' ? 'Email já cadastrado.' : 'Erro interno ao cadastrar usuário.' });
   } finally { client.release(); }
 });
 
@@ -157,7 +157,7 @@ router.post('/login', async (req, res) => {
     const result = await pool.query(`SELECT u.id,u.nome,u.email,u.senha_hash,u.endereco,u.created_at,u.is_admin,u.role,
                                             m.id membership_id,m.role membership_role,m.status membership_status
                                      FROM users u JOIN memberships m ON m.user_id=u.id AND m.tenant_id=$2 WHERE u.email=$1`, [email.trim().toLowerCase(), req.tenant.id]);
-    if (!result.rowCount || result.rows[0].membership_status !== 'active' || !await bcrypt.compare(senha, result.rows[0].senha_hash)) return res.status(401).json({ error: 'Email, senha ou acesso a loja invalidos.' });
+    if (!result.rowCount || result.rows[0].membership_status !== 'active' || !await bcrypt.compare(senha, result.rows[0].senha_hash)) return res.status(401).json({ error: 'Email, senha ou acesso a loja inválidos.' });
     const session = await createSession(result.rows[0].id, req.tenant.id, result.rows[0].membership_id);
     setSessionCookies(res, session.token, session.csrfToken);
     return res.json({ user: sanitizeUser(result.rows[0], req.tenant), csrf_token: session.csrfToken });
@@ -214,7 +214,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
 });
 
 router.post('/session/rotate', authenticateToken, async (req, res) => {
-  if (!req.session || !req.membership) return res.status(400).json({ error: 'Sessao legada nao pode ser rotacionada.' });
+  if (!req.session || !req.membership) return res.status(400).json({ error: 'Sessão legada não pode ser rotacionada.' });
   await pool.query('UPDATE auth_sessions SET revoked_at=NOW() WHERE id=$1', [req.session.id]);
   const session = await createSession(req.user.id, req.tenant.id, req.membership.id, req.session.id);
   setSessionCookies(res, session.token, session.csrfToken);
@@ -226,12 +226,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
   const { nome = '', email = '', endereco = '' } = req.body;
   const errors = [];
   if (nome.trim().length < 2) errors.push('Nome deve ter pelo menos 2 caracteres.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email invalido.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email inválido.');
   if (errors.length) return res.status(400).json({ errors });
   try {
     const result = await pool.query(`UPDATE users SET nome=$1,email=$2,endereco=$3 WHERE id=$4 RETURNING id,nome,email,endereco,created_at,is_admin,role`, [nome.trim(), email.trim().toLowerCase(), endereco.trim() || null, req.user.id]);
     return res.json({ user: sanitizeUser({ ...result.rows[0], membership_id: req.membership?.id, membership_role: req.membership?.role }, req.tenant) });
-  } catch (error) { return res.status(error.code === '23505' ? 409 : 500).json({ error: error.code === '23505' ? 'Email ja cadastrado.' : 'Erro interno ao atualizar perfil.' }); }
+  } catch (error) { return res.status(error.code === '23505' ? 409 : 500).json({ error: error.code === '23505' ? 'Email já cadastrado.' : 'Erro interno ao atualizar perfil.' }); }
 });
 
 module.exports = router;

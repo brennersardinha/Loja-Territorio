@@ -5,6 +5,7 @@ export const EMPTY_STORE_INFO = {
   contact: { email: '', phone: '', whatsapp: '' },
   policies: { privacy: '', exchanges: '' },
   payment: { sandbox: false, stripe_publishable_key: null },
+  shipping: { free_shipping_min: 0, quotes_enabled: false, fixed_methods: [] },
 };
 
 let cached = null;

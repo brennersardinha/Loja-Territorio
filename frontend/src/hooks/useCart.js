@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const GUEST_CART_KEY = 'guestCartItems';
+export const GUEST_CART_KEY = 'guestCartItems';
 
 export default function useCart(initial = []) {
   const [cartItems, setCartItems] = useState(() => {
