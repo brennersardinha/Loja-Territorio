@@ -22,10 +22,13 @@ function createStoreRouter({ pool, authenticateToken } = {}) {
       ]);
       const publishableKey = String(process.env.STRIPE_PUBLISHABLE_KEY || '').trim();
       const quotesEnabled = Boolean(carriers?.rowCount);
-      // Remetente (CNPJ/CPF) só interessa às etiquetas do admin; não vai para a vitrine.
+      // Remetente completo só interessa às etiquetas do admin. No rodapé vai apenas a identificação
+      // da empresa (razão social, CNPJ e endereço), e só quando o documento é CNPJ: CPF nunca é público.
       const { sender, ...publicInfo } = info;
+      const isCompany = String(sender.document || '').replace(/\D/g, '').length === 14;
       return res.json({
         ...publicInfo,
+        company: isCompany ? { name: sender.name, document: sender.document, address: [sender.address, sender.zip_code && `CEP ${sender.zip_code}`].filter(Boolean).join(' - ') } : null,
         // Com transportadora ativa o frete vem da cotacao por CEP; sem ela, dos valores fixos.
         shipping: {
           ...publicInfo.shipping,

@@ -40,7 +40,7 @@ describe('motor de etiquetas', () => {
     expect(response.status).toBe(200);
     expect(response.body.labels).toHaveLength(1);
     expect(response.body.labels[0]).toMatchObject({
-      label: { code: 'ETQ-2026-000001', volumes: 2, weight_kg: 1.2, weight_is_estimate: true },
+      label: { code: 'ETQ-2026-000001', volumes: 2, weight_kg: null, estimated_weight_kg: 1.2, measured: false },
       order: { reference: 'PED-ABC', service: 'Expresso', is_pickup: false, items_count: 2 },
       recipient: { name: 'Maria', zip_code: '14400-000' },
       sender: { name: 'Território do Couro LTDA', zip_code: '74513-040' },
@@ -82,9 +82,11 @@ describe('motor de etiquetas', () => {
     expect(() => parseOrderIds([])).toThrow();
     expect(() => parseOrderIds(Array.from({ length: 101 }, (_, i) => i + 1))).toThrow();
     expect(parseOrderIds(['3', 3, 4])).toEqual([3, 4]);
-    expect(validateLabelUpdate({ volumes: 0 }).errors).toHaveLength(1);
+    expect(validateLabelUpdate({ volumes: 0, weight_kg: 1 }).errors).toHaveLength(1);
     expect(validateLabelUpdate({ volumes: 3, weight_kg: '2.5' })).toEqual({ errors: [], data: { volumes: 3, weight_kg: 2.5 } });
     expect(validateLabelUpdate({ volumes: 1, weight_kg: -1 }).errors).toHaveLength(1);
+    // Peso é obrigatório: não existe etiqueta de envio com peso estimado.
+    expect(validateLabelUpdate({ volumes: 2 }).errors).toEqual(['Informe o peso real do pacote: maior que zero e de até 1000 kg.']);
     expect(LABEL_ELIGIBLE_STATUSES).not.toContain('pending');
   });
 

@@ -3,8 +3,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import LabelsPrintPage from './LabelsPrintPage';
 
+const unmeasured = (base) => ({ ...base, label: { ...base.label, volumes: 1, weight_kg: null, measured: false } });
+
 const payload = {
-  label: { id: 1, code: 'ETQ-2026-000001', volumes: 2, weight_kg: 1.2, weight_is_estimate: true, print_count: 0 },
+  label: { id: 1, code: 'ETQ-2026-000001', volumes: 2, weight_kg: 1.4, estimated_weight_kg: 1.2, measured: true, print_count: 0 },
   order: { id: 5, reference: 'PED-ABC', created_at: '2026-10-30T12:00:00Z', service: 'Expresso', is_pickup: false, items_count: 2 },
   recipient: { name: 'Maria Sapateira', street: 'Rua 15', number: '220', complement: 'Galpão 2', neighborhood: 'Centro', city: 'Franca', state: 'SP', zip_code: '14400-000' },
   sender: { name: 'Território do Couro', document: '00.939.693/0001-80', address: 'Av. Mato Grosso, 114', zip_code: '74513-040', phone: '(62) 8159-8510' },
@@ -51,16 +53,41 @@ describe('LabelsPrintPage', () => {
     expect(screen.getByRole('button', { name: 'Imprimir 1 folha' })).toBeInTheDocument();
   });
 
-  it('ajusta volumes e registra a impressão', async () => {
-    global.fetch = vi.fn(async (url, options) => {
-      if (url === '/api/admin/orders/5/label') return { ok: true, json: async () => ({ label: { ...payload, label: { ...payload.label, volumes: 3 } } }) };
-      return { ok: true, json: async () => ({ labels: [payload], skipped: [] }) };
+  it('sem peso e volumes informados a etiqueta de envio não é emitida', async () => {
+    global.fetch = vi.fn(async (url) => {
+      if (url === '/api/admin/orders/5/label') return { ok: true, json: async () => ({ label: { ...payload, label: { ...payload.label, volumes: 3, weight_kg: 2.5 } } }) };
+      return { ok: true, json: async () => ({ labels: [unmeasured(payload)], skipped: [] }) };
     });
     renderPage('/admin/etiquetas?pedidos=5');
-    fireEvent.change(await screen.findByLabelText('Volumes'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+    expect(await screen.findByText('Informe peso e volumes antes de emitir')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Etiqueta de envio ETQ-2026-000001-1')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Imprimir 0 folhas' })).toBeDisabled();
+    expect(screen.getByLabelText('Volumes')).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText('Volumes'), { target: { value: '3' } });
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Peso (kg)'), { target: { value: '2.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     expect(await screen.findByLabelText('Etiqueta de envio ETQ-2026-000001-3')).toBeInTheDocument();
+    expect(JSON.parse(fetch.mock.calls.find(([url]) => url === '/api/admin/orders/5/label')[1].body)).toEqual({ volumes: 3, weight_kg: 2.5 });
+    expect(screen.getByText('✓ Confirmado')).toBeInTheDocument();
     window.dispatchEvent(new Event('afterprint'));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/admin/labels/printed', expect.objectContaining({ body: JSON.stringify({ label_ids: [1] }) })));
+  });
+
+  it('alterar peso já confirmado exige nova confirmação', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ labels: [payload], skipped: [] }) }));
+    renderPage('/admin/etiquetas?pedidos=5');
+    fireEvent.change(await screen.findByLabelText('Peso (kg)'), { target: { value: '3' } });
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeEnabled();
+    expect(screen.queryByLabelText('Etiqueta de envio ETQ-2026-000001-1')).not.toBeInTheDocument();
+  });
+
+  it('ficha de separação sai antes da pesagem', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ labels: [unmeasured(payload)], skipped: [] }) }));
+    renderPage('/admin/etiquetas?pedidos=5&tipo=separacao');
+    expect(await screen.findByLabelText('Ficha de separação ETQ-2026-000001')).toBeInTheDocument();
+    expect(screen.getByText('2 itens')).toBeInTheDocument();
+    expect(screen.queryByText('Informe peso e volumes antes de emitir')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Imprimir 1 folha' })).toBeEnabled();
   });
 });

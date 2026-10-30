@@ -39,7 +39,7 @@ export function ShippingLabel({ payload, volume, logo }) {
       <section className="label-facts">
         <div><small>Pedido</small><strong>{order.reference}</strong></div>
         <div><small>Volume</small><strong>{volume}/{label.volumes}</strong></div>
-        <div><small>Peso{label.weight_is_estimate ? ' (est.)' : ''}</small><strong>{formatWeight(label.weight_kg)}</strong></div>
+        <div><small>Peso</small><strong>{formatWeight(label.weight_kg)}</strong></div>
         <div><small>Data</small><strong>{formatDate(order.created_at)}</strong></div>
       </section>
       <Barcode value={volumeCode} height={56} className="label-barcode" />
@@ -68,7 +68,7 @@ export function PickingSlip({ payload }) {
         <thead><tr><th aria-label="Separado" /><th>Qtd.</th><th>Produto</th><th>SKU</th></tr></thead>
         <tbody>{items.map((item, index) => <tr key={`${item.sku}-${index}`}><td><span className="picking-check" aria-hidden="true" /></td><td><strong>{item.quantity}</strong> <small>{item.unit}</small></td><td>{item.name}</td><td>{item.sku || '—'}</td></tr>)}</tbody>
       </table>
-      <p className="picking-total">{order.items_count} {order.items_count === 1 ? 'item' : 'itens'} · {label.volumes} {label.volumes === 1 ? 'volume' : 'volumes'} · {formatWeight(label.weight_kg)}</p>
+      <p className="picking-total">{order.items_count} {order.items_count === 1 ? 'item' : 'itens'}{label.measured ? ` · ${label.volumes} ${label.volumes === 1 ? 'volume' : 'volumes'} · ${formatWeight(label.weight_kg)}` : ''}</p>
       <footer className="picking-sign"><span>Separado por: __________________</span><span>Conferido por: _________________</span></footer>
     </article>
   );
@@ -93,25 +93,36 @@ export default function LabelsPrintPage({ token }) {
       .then(parseResponse)
       .then((data) => {
         setLabels(data.labels || []); setSkipped(data.skipped || []); setError('');
-        setDrafts(Object.fromEntries((data.labels || []).map(({ order, label }) => [order.id, { volumes: label.volumes, weight_kg: label.weight_is_estimate ? '' : label.weight_kg }])));
+        // Sem medição confirmada os campos começam vazios: quem embala informa peso e volumes reais.
+        setDrafts(Object.fromEntries((data.labels || []).map(({ order, label }) => [order.id, label.measured ? { volumes: String(label.volumes), weight_kg: String(label.weight_kg) } : { volumes: '', weight_kg: '' }])));
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, [orderIds.join(','), token]);
 
-  // Após a impressão, registra quantas vezes cada etiqueta saiu (reimpressões mantêm o mesmo código).
+  const withShipping = documentType !== 'separacao';
+  // Medição pendente: sem peso/volumes confirmados, ou com valores digitados e ainda não confirmados.
+  const isPending = ({ order, label }) => {
+    const draft = drafts[order.id] || {};
+    return !label.measured || Number(draft.volumes) !== label.volumes || Number(draft.weight_kg) !== label.weight_kg;
+  };
+  const pending = withShipping ? labels.filter(isPending) : [];
+  const printable = withShipping ? labels.filter((payload) => !isPending(payload)) : labels;
+
+  // Após a impressão, registra quantas vezes cada etiqueta de envio saiu (reimpressões mantêm o mesmo código).
   useEffect(() => {
-    if (!labels.length) return undefined;
-    const registerPrint = () => fetch('/api/admin/labels/printed', { method: 'POST', headers, body: JSON.stringify({ label_ids: labels.map(({ label }) => label.id) }) }).catch(() => null);
+    if (!withShipping || !printable.length) return undefined;
+    const registerPrint = () => fetch('/api/admin/labels/printed', { method: 'POST', headers, body: JSON.stringify({ label_ids: printable.map(({ label }) => label.id) }) }).catch(() => null);
     window.addEventListener('afterprint', registerPrint);
     return () => window.removeEventListener('afterprint', registerPrint);
-  }, [labels, token]);
+  }, [printable.map(({ label }) => label.id).join(','), withShipping, token]);
 
   async function saveLabel(orderId) {
     const draft = drafts[orderId];
     try {
-      const data = await parseResponse(await fetch(`/api/admin/orders/${orderId}/label`, { method: 'PUT', headers, body: JSON.stringify({ volumes: Number(draft.volumes), weight_kg: draft.weight_kg === '' ? null : Number(draft.weight_kg) }) }));
+      const data = await parseResponse(await fetch(`/api/admin/orders/${orderId}/label`, { method: 'PUT', headers, body: JSON.stringify({ volumes: Number(draft.volumes), weight_kg: Number(draft.weight_kg) }) }));
       setLabels((current) => current.map((item) => (item.order.id === orderId ? data.label : item)));
+      setDrafts((current) => ({ ...current, [orderId]: { volumes: String(data.label.label.volumes), weight_kg: String(data.label.label.weight_kg) } }));
       setError('');
     } catch (requestError) { setError(requestError.message); }
   }
@@ -120,7 +131,7 @@ export default function LabelsPrintPage({ token }) {
   const slip = (payload) => <PickingSlip key={`${payload.label.code}-separacao`} payload={payload} />;
   const landscape = documentType === 'ambos';
   // Envio e separação: folha A5 em paisagem com o volume 1 ao lado da ficha; volumes extras saem dois por folha.
-  const sheets = labels.flatMap((payload) => {
+  const sheets = printable.flatMap((payload) => {
     if (documentType === 'envio') return shippingLabels(payload);
     if (documentType === 'separacao') return [slip(payload)];
     const [first, ...extra] = shippingLabels(payload);
@@ -139,11 +150,12 @@ export default function LabelsPrintPage({ token }) {
           <fieldset className="labels-documents"><legend>Imprimir</legend>{DOCUMENTS.map(([value, text]) => <label key={value}><input type="radio" name="documentType" value={value} checked={documentType === value} onChange={() => setDocumentType(value)} />{text}</label>)}</fieldset>
           <div className="labels-orders">{labels.map(({ order, label }) => <div key={order.id} className="labels-order-row">
             <div><strong>{label.code}</strong><small>{order.reference} · {order.service}{label.print_count ? ` · impressa ${label.print_count}×` : ''}</small></div>
-            <label>Volumes<input type="number" min="1" max="50" value={drafts[order.id]?.volumes ?? 1} onChange={(event) => setDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], volumes: event.target.value } }))} /></label>
-            <label>Peso (kg)<input type="number" min="0.001" step="0.001" placeholder={label.weight_is_estimate && label.weight_kg ? `${formatWeight(label.weight_kg)} (estimado)` : 'Opcional'} value={drafts[order.id]?.weight_kg ?? ''} onChange={(event) => setDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], weight_kg: event.target.value } }))} /></label>
-            <Button variant="ghost" size="sm" onClick={() => saveLabel(order.id)}>Aplicar</Button>
+            <label>Volumes<input type="number" min="1" max="50" step="1" required placeholder="Ex.: 1" value={drafts[order.id]?.volumes ?? ''} onChange={(event) => setDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], volumes: event.target.value } }))} /></label>
+            <label>Peso (kg)<input type="number" min="0.001" step="0.001" required placeholder={label.estimated_weight_kg ? `Produtos: ${formatWeight(label.estimated_weight_kg)}` : 'Pese o pacote'} value={drafts[order.id]?.weight_kg ?? ''} onChange={(event) => setDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], weight_kg: event.target.value } }))} /></label>
+            {withShipping && (isPending({ order, label }) ? <Button size="sm" disabled={!drafts[order.id]?.volumes || !drafts[order.id]?.weight_kg} onClick={() => saveLabel(order.id)}>Confirmar</Button> : <span className="labels-order-ok">✓ Confirmado</span>)}
           </div>)}</div>
-          <Button size="lg" onClick={() => window.print()}>Imprimir {sheets.length} {sheets.length === 1 ? 'folha' : 'folhas'}</Button>
+          {pending.length > 0 && <Alert variant="warning" title="Informe peso e volumes antes de emitir">Pese e conte os volumes já embalados e clique em "Confirmar". {pending.length === 1 ? '1 pedido ainda não pode' : `${pending.length} pedidos ainda não podem`} ter a etiqueta de envio impressa.</Alert>}
+          <Button size="lg" disabled={!sheets.length} onClick={() => window.print()}>Imprimir {sheets.length} {sheets.length === 1 ? 'folha' : 'folhas'}</Button>
         </>}
         {loading && <p className="muted-text" role="status">Gerando etiquetas…</p>}
       </div>

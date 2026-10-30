@@ -109,7 +109,7 @@ export default function useProducts({ token, setStatus, setLoading } = {}) {
     const validationError = validateProductForm(productForm);
     if (validationError) {
       setStatus?.(validationError);
-      return;
+      return { ok: false, error: validationError };
     }
     setLoading?.(true);
     const isEditingProduct = editingProductId !== null;
@@ -130,8 +130,11 @@ export default function useProducts({ token, setStatus, setLoading } = {}) {
       cancelProductEdit();
       await fetchProducts(productFilters, productPagination.page);
       setStatus?.(isEditingProduct ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
+      return { ok: true };
     } catch (error) {
-      setStatus?.(error.message.includes('JSON') ? 'Atributos dinâmicos devem conter JSON válido.' : error.message);
+      const message = error.message.includes('JSON') ? 'Atributos dinâmicos devem conter JSON válido.' : error.message;
+      setStatus?.(message);
+      return { ok: false, error: message };
     } finally {
       setLoading?.(false);
     }

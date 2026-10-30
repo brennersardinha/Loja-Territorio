@@ -19,7 +19,7 @@ export function whatsappLink(phone, text = '') {
 export default function ClientLayout({ children, user, onLogout, cartCount = 0, categories = [] }) {
   const { branding } = useBranding();
   const { storeInfo } = useStoreInfo();
-  const { contact, policies, pickup } = storeInfo;
+  const { contact, policies, company } = storeInfo;
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -28,6 +28,7 @@ export default function ClientLayout({ children, user, onLogout, cartCount = 0, 
   const menuButtonRef = useRef(null);
   const firstMenuLinkRef = useRef(null);
   const searchInputRef = useRef(null);
+  const headerRef = useRef(null);
   const whatsapp = whatsappLink(contact.whatsapp, `Olá! Vim pela loja ${branding.store_name}.`);
   const menuCategories = categories.filter((category) => !category.parent_id).slice(0, MAX_MENU_CATEGORIES);
   const navigationItems = [
@@ -40,6 +41,15 @@ export default function ClientLayout({ children, user, onLogout, cartCount = 0, 
   useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [location.pathname, location.search]);
   useEffect(() => { if (location.pathname !== '/buscar') setSearch(''); else setSearch(new URLSearchParams(location.search).get('busca') || ''); }, [location.pathname, location.search]);
   useEffect(() => { if (searchOpen) searchInputRef.current?.focus(); }, [searchOpen]);
+  // Cabeçalho fixo: publica a altura real para que painéis "sticky" da vitrine parem logo abaixo dele.
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header || typeof ResizeObserver === 'undefined') return undefined;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => root.style.setProperty('--store-header-h', `${header.offsetHeight}px`));
+    observer.observe(header);
+    return () => { observer.disconnect(); root.style.removeProperty('--store-header-h'); };
+  }, []);
   useEffect(() => {
     if (!menuOpen) return undefined;
     firstMenuLinkRef.current?.focus();
@@ -68,7 +78,7 @@ export default function ClientLayout({ children, user, onLogout, cartCount = 0, 
   return (
     <div className="site-shell">
       <a className="skip-link" href="#conteudo-principal">Ir para o conteúdo</a>
-      <header className="store-header">
+      <header ref={headerRef} className="store-header">
         <div className="store-header-main">
           <NavLink className="brand-heading brand-link" to="/" aria-label={`${branding.store_name}, página inicial`}>
             {branding.logo && <ResponsiveImage className="store-logo" src={branding.logo} alt={`${branding.store_name || 'Loja'} — página inicial`} eager />}
@@ -96,7 +106,12 @@ export default function ClientLayout({ children, user, onLogout, cartCount = 0, 
         <main id="conteudo-principal" className="workspace">{children}</main>
       </div>
       {whatsapp && <a className="whatsapp-float" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Falar com a loja pelo WhatsApp"><Icon name="chat" size={26} /><span>WhatsApp</span></a>}
-      <footer className="store-footer"><div><strong>{branding.store_name}</strong><span>Compra segura, entrega acompanhada e suporte quando precisar.</span>{pickup.enabled && <span>Loja física: {pickup.address} · {pickup.hours}</span>}</div>{(contact.email || contact.phone || contact.whatsapp) && <div aria-label="Contato"><strong>Atendimento</strong>{contact.email && <span>{contact.email}</span>}{contact.phone && <span>{contact.phone}</span>}{contact.whatsapp && (whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp: {contact.whatsapp}</a> : <span>WhatsApp: {contact.whatsapp}</span>)}</div>}{(policies.privacy || policies.exchanges) && <nav aria-label="Políticas da loja">{policies.exchanges && <NavLink to="/politicas/trocas">Trocas e devoluções</NavLink>}{policies.privacy && <NavLink to="/politicas/privacidade">Privacidade</NavLink>}</nav>}</footer>
+      <footer className="store-footer">
+        <div className="store-footer-inner">
+          <nav className="store-footer-links" aria-label="Links do rodapé">{policies.exchanges && <Link to="/politicas/trocas">Trocas e devoluções</Link>}{policies.privacy && <Link to="/politicas/privacidade">Política de privacidade</Link>}{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">Atendimento</a>}{contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>}</nav>
+          <p className="store-footer-legal">© {new Date().getFullYear()} {branding.store_name}. Todos os direitos reservados.{company && ` ${company.name} - CNPJ: ${company.document}${company.address ? ` - ${company.address}` : ''}`}</p>
+        </div>
+      </footer>
     </div>
   );
 }

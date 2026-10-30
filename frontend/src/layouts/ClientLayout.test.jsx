@@ -46,6 +46,13 @@ describe('ClientLayout', () => {
     expect(await screen.findByRole('link', { name: 'Falar com a loja pelo WhatsApp' })).toHaveAttribute('href', expect.stringContaining('https://wa.me/5584999990000'));
   });
 
+  it('rodapé enxuto traz links e a identificação da empresa', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ policies: { privacy: 'Texto', exchanges: '' }, company: { name: 'Território do Couro Ltda', document: '00.939.693/0001-80', address: 'Av. Mato Grosso, 114 - CEP 74513-040' } }) }));
+    renderLayout();
+    expect(await screen.findByText(/Território do Couro Ltda - CNPJ: 00\.939\.693\/0001-80 - Av\. Mato Grosso, 114/)).toHaveClass('store-footer-legal');
+    expect(screen.getByRole('navigation', { name: 'Links do rodapé' })).toHaveTextContent('Política de privacidade');
+  });
+
   it('monta o link do WhatsApp só com número válido', () => {
     expect(whatsappLink('84 99999-0000')).toBe('https://wa.me/5584999990000');
     expect(whatsappLink('+351 912 345 678')).toBe('https://wa.me/351912345678');

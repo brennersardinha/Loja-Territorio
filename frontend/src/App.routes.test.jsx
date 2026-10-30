@@ -190,7 +190,15 @@ describe('rotas principais', () => {
     });
 
     renderAt('/admin/produtos');
-    expect(await screen.findByRole('heading', { name: 'Gerenciar produtos' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Produtos cadastrados' })).toBeInTheDocument();
+    // O formulário só aparece na janela sobreposta, aberta pelo botão do cabeçalho.
+    expect(screen.queryByRole('dialog', { name: 'Novo produto' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '+ Novo produto' }));
+    const dialog = screen.getByRole('dialog', { name: 'Novo produto' });
+    expect(dialog).toContainElement(screen.getByLabelText('Nome'));
+    expect(screen.getByLabelText('Nome')).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Novo produto' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Produtos da loja' })).not.toBeInTheDocument();
   });
 
@@ -200,9 +208,13 @@ describe('rotas principais', () => {
       '/api/profile': () => authProfileResponse(['orders:read']),
     });
 
-    renderAt('/admin');
-    expect(await screen.findByRole('heading', { name: 'Gestão de Pedidos' })).toBeInTheDocument();
-    expect(screen.queryByText('Acesso restrito a administradores.')).not.toBeInTheDocument();
+    renderAt('/admin/pedidos');
+    expect(await screen.findByRole('heading', { name: 'Pedidos', level: 2 })).toBeInTheDocument();
+    // Menu agrupado: o grupo Vendas mostra só o que a permissão libera.
+    const sales = screen.getByRole('group', { name: 'Vendas' });
+    expect(sales).toHaveTextContent('Pedidos');
+    expect(sales).not.toHaveTextContent('Clientes');
+    expect(screen.queryByRole('group', { name: 'Catálogo' })).not.toBeInTheDocument();
   });
 
   it('mostra link Produtos na navegacao admin para usuário com products:write', async () => {
@@ -225,6 +237,9 @@ describe('rotas principais', () => {
     renderAt('/admin');
     expect(await screen.findByText('Receita total')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
+    // A visão geral não carrega mais as ferramentas das outras páginas.
+    expect(screen.queryByRole('heading', { name: 'Gestão de cupons' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Precisa de atenção' })).toBeInTheDocument();
   });
 
   it('exibe preview e confirmação de restauração no Branding', async () => {

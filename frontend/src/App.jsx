@@ -16,6 +16,11 @@ import BrandingSection from './components/BrandingSection';
 import IntegrationSection from './components/IntegrationSection';
 import MarketingSection from './components/MarketingSection';
 import StoreSettingsSection from './components/StoreSettingsSection';
+import OrdersSection from './components/admin/OrdersSection';
+import CustomersSection from './components/admin/CustomersSection';
+import CouponsSection from './components/admin/CouponsSection';
+import ReportsSection from './components/admin/ReportsSection';
+import PaymentSettingsSection from './components/admin/PaymentSettingsSection';
 import InventorySection from './components/InventorySection';
 import LabelsPrintPage from './components/LabelsPrintPage';
 import PolicyPage from './components/PolicyPage';
@@ -268,9 +273,6 @@ function AppContent() {
       if (hasPermission(PERMISSIONS.REPORTS_READ)) {
         fetchAdminMetrics();
       }
-      if (hasPermission(PERMISSIONS.CUSTOMERS_READ)) {
-        fetchCustomers();
-      }
   }, [token, user]);
 
 
@@ -452,10 +454,25 @@ function AppContent() {
         )} />
 
         <Route path="/admin" element={authorizedAdminPage(DASHBOARD_ACCESS_PERMISSIONS,
-        <AdminSection
-          adminMetrics={adminMetrics}
-          topProducts={topProducts}
-          fetchAdminMetrics={fetchAdminMetrics}
+        <AdminSection adminMetrics={adminMetrics} loading={loading} formatPrice={formatPrice} token={token} />
+        )} />
+        <Route path="/admin/pedidos" element={authorizedAdminPage([PERMISSIONS.ORDERS_READ],
+        <OrdersSection
+          adminOrders={adminOrders}
+          adminOrdersPagination={adminOrdersPagination}
+          fetchAdminOrders={fetchAdminOrders}
+          fetchAdminOrderDetails={fetchAdminOrderDetails}
+          adminOrderDetail={adminOrderDetail}
+          updateAdminOrderStatus={updateAdminOrderStatus}
+          adminOrderFilters={adminOrderFilters}
+          setAdminOrderFilters={setAdminOrderFilters}
+          loading={loading}
+          formatPrice={formatPrice}
+          formatDateTime={formatDateTime}
+        />
+        )} />
+        <Route path="/admin/clientes" element={authorizedAdminPage([PERMISSIONS.CUSTOMERS_READ],
+        <CustomersSection
           customerSearch={customerSearch}
           setCustomerSearch={setCustomerSearch}
           fetchCustomers={fetchCustomers}
@@ -464,23 +481,15 @@ function AppContent() {
           customerDetail={customerDetail}
           customerEditForm={customerEditForm}
           submitCustomerEdit={submitCustomerEdit}
-          selectedCustomer={selectedCustomer}
-          loading={loading}
           onCustomerEditChange={customerEditFormChange}
+          loading={loading}
           formatPrice={formatPrice}
           formatDateTime={formatDateTime}
-          adminOrders={adminOrders}
-          adminOrdersPagination={adminOrdersPagination}
-          fetchAdminOrders={fetchAdminOrders}
-          fetchAdminOrderDetails={fetchAdminOrderDetails}
-          adminOrderDetail={adminOrderDetail}
-          updateAdminOrderStatus={updateAdminOrderStatus}
-          user={user}
-          token={token}
-          adminOrderFilters={adminOrderFilters}
-          setAdminOrderFilters={setAdminOrderFilters}
         />
         )} />
+        <Route path="/admin/relatorios" element={authorizedAdminPage([PERMISSIONS.REPORTS_READ], <ReportsSection token={token} topProducts={topProducts} fetchAdminMetrics={fetchAdminMetrics} formatPrice={formatPrice} />)} />
+        <Route path="/admin/cupons" element={authorizedAdminPage([PERMISSIONS.COUPONS_MANAGE], <CouponsSection token={token} formatPrice={formatPrice} />)} />
+        <Route path="/admin/pagamento" element={authorizedAdminPage([PERMISSIONS.STORE_SETTINGS_MANAGE], <PaymentSettingsSection token={token} />)} />
 
         <Route path="/conta" element={clientPage(
         <AccountSection

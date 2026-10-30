@@ -34,6 +34,17 @@ describe('frete na vitrine', () => {
     expect(response.body.shipping).toMatchObject({ quotes_enabled: true, fixed_methods: [] });
   });
 
+  test('rodape recebe razao social e CNPJ, mas nunca o CPF do remetente', async () => {
+    const storeInfo = (document) => ({ query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ value: { sender: { name: 'Territorio Ltda', document, address: 'Av. Mato Grosso, 114', zip_code: '74513-040', phone: '62' } } }] })
+      .mockResolvedValue({ rowCount: 0, rows: [] }) });
+    const get = (db) => request(appWith(createStoreRouter({ pool: db, authenticateToken: (_req, _res, next) => next() }))).get('/api/store-info');
+    const company = await get(storeInfo('00.939.693/0001-80'));
+    expect(company.body.company).toEqual({ name: 'Territorio Ltda', document: '00.939.693/0001-80', address: 'Av. Mato Grosso, 114 - CEP 74513-040' });
+    expect(company.body.sender).toBeUndefined();
+    expect((await get(storeInfo('123.456.789-09'))).body.company).toBeNull();
+  });
+
   test('valor minimo para frete gratis precisa ser numero nao negativo', () => {
     expect(validateStoreInfo({ shipping: { free_shipping_min: -1 } }).errors).toContain('Valor mínimo para frete grátis inválido.');
     expect(validateStoreInfo({ shipping: { free_shipping_min: '149.9' } }).value.shipping.free_shipping_min).toBe(149.9);

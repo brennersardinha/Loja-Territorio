@@ -40,12 +40,13 @@ function createLabelRouter({ pool, authenticateToken } = {}) {
   });
 
   // Chamado depois da impressão: mantém o histórico de quantas vezes cada etiqueta saiu.
+  // Só conta etiquetas com peso e volumes informados; antes disso a etiqueta de envio não é emitida.
   router.post('/labels/printed', ...guard, async (req, res) => {
     const ids = [...new Set((Array.isArray(req.body?.label_ids) ? req.body.label_ids : []).map(Number))].filter((id) => Number.isInteger(id) && id > 0);
     if (!ids.length || ids.length > 100) return res.status(400).json({ error: 'Informe de 1 a 100 etiquetas.' });
     try {
       const result = await db.query(
-        'UPDATE order_labels SET print_count = print_count + 1, last_printed_at = NOW() WHERE tenant_id = $1 AND id = ANY($2::int[]) RETURNING id, print_count, last_printed_at',
+        'UPDATE order_labels SET print_count = print_count + 1, last_printed_at = NOW() WHERE tenant_id = $1 AND id = ANY($2::int[]) AND weight_kg IS NOT NULL RETURNING id, print_count, last_printed_at',
         [req.tenant.id, ids],
       );
       return res.json({ labels: result.rows });

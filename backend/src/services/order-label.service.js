@@ -127,8 +127,10 @@ async function loadLabelPayloads(db, tenantId, orderIds) {
         id: order.label_id,
         code: order.code,
         volumes: Number(order.volumes),
-        weight_kg: order.weight_kg === null ? estimatedWeight || null : Number(order.weight_kg),
-        weight_is_estimate: order.weight_kg === null,
+        // Peso e volumes dependem da embalagem real: a etiqueta de envio só sai depois de informados (measured).
+        weight_kg: order.weight_kg === null ? null : Number(order.weight_kg),
+        estimated_weight_kg: estimatedWeight || null,
+        measured: order.weight_kg !== null,
         print_count: Number(order.print_count),
         last_printed_at: order.last_printed_at,
         created_at: order.label_created_at,
@@ -169,11 +171,10 @@ async function generateLabels(db, tenantId, orderIds, userId) {
 
 function validateLabelUpdate(body = {}) {
   const volumes = Number(body.volumes);
-  const hasWeight = body.weight_kg !== undefined && body.weight_kg !== null && body.weight_kg !== '';
-  const weight = hasWeight ? Number(body.weight_kg) : null;
+  const weight = body.weight_kg === undefined || body.weight_kg === null || body.weight_kg === '' ? NaN : Number(body.weight_kg);
   const errors = [];
   if (!Number.isInteger(volumes) || volumes < 1 || volumes > MAX_VOLUMES) errors.push(`Volumes deve ser um número inteiro entre 1 e ${MAX_VOLUMES}.`);
-  if (hasWeight && (!Number.isFinite(weight) || weight <= 0 || weight > 1000)) errors.push('Peso deve ser maior que zero e de até 1000 kg.');
+  if (!Number.isFinite(weight) || weight <= 0 || weight > 1000) errors.push('Informe o peso real do pacote: maior que zero e de até 1000 kg.');
   return { errors, data: { volumes, weight_kg: weight } };
 }
 
